@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { 
   ActivityIndicator, 
   Alert, 
-  FlatList, 
   Pressable, 
   RefreshControl, 
   SafeAreaView, 
@@ -13,7 +12,7 @@ import {
 } from 'react-native';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { colors } from '../../theme/colors';
+import { colors, shadows } from '../../theme/colors';
 
 export default function AdminScreen() {
   const { token } = useAuth();
@@ -51,7 +50,7 @@ export default function AdminScreen() {
   async function handleVerifyArtist(artist) {
     try {
       await apiRequest(`/artists/${artist.id}/verify`, { method: 'POST', token });
-      Alert.alert('Éxito', `El artista "${artist.name}" ha sido verificado.`);
+      Alert.alert('Éxito', `El sello discográfico "${artist.name}" ha sido verificado.`);
       await loadAdminData();
     } catch (err) {
       Alert.alert('Error al verificar', err.message);
@@ -61,7 +60,7 @@ export default function AdminScreen() {
   async function handleToggleStatus(u) {
     try {
       const res = await apiRequest(`/admin/users/${u.id}/status`, { method: 'PATCH', token });
-      Alert.alert('Estado actualizado', res.message);
+      Alert.alert('Estado de cuenta actualizado', res.message);
       await loadAdminData();
     } catch (err) {
       Alert.alert('Error', err.message);
@@ -75,7 +74,7 @@ export default function AdminScreen() {
         token,
         body: { role: newRole }
       });
-      Alert.alert('Rol asignado', `El usuario ${u.username} ahora posee el rol "${newRole}".`);
+      Alert.alert('Rol asignado', `El usuario @${u.username} ahora posee el rol "${newRole}".`);
       await loadAdminData();
     } catch (err) {
       Alert.alert('Error al asignar rol', err.message);
@@ -84,112 +83,155 @@ export default function AdminScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.topBar}>
+        <View>
+          <Text style={styles.title}>Panel de Control Admin</Text>
+          <Text style={styles.subtitle}>
+            Auditoría de linaje, moderación de sellos discográficos y gestión de usuarios.
+          </Text>
+        </View>
+      </View>
+
       <ScrollView 
         contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
         }
       >
-        <Text style={styles.title}>Panel de Control Admin</Text>
-        <Text style={styles.caption}>Auditoría global, moderación de sellos y usuarios</Text>
-
         {loading ? (
-          <ActivityIndicator color={colors.accent} size="large" style={{ marginTop: 40 }} />
+          <View style={styles.centerLoading}>
+            <ActivityIndicator color={colors.accent} size="large" />
+            <Text style={styles.loadingText}>Recuperando telemetría del sistema...</Text>
+          </View>
         ) : (
           <>
-            {/* Métricas Globales */}
-            <Text style={styles.sectionHeader}>Métricas del Sistema</Text>
+            {/* Métricas Globales del Sistema */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionHeader}>MÉTRICAS DEL SISTEMA EN TIEMPO REAL</Text>
+            </View>
+
             <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
+              <View style={[styles.statCard, shadows.sm]}>
+                <Text style={styles.statLabel}>USUARIOS REGISTRADOS</Text>
                 <Text style={styles.statNumber}>{stats?.totalUsers ?? '-'}</Text>
-                <Text style={styles.statTitle}>Usuarios</Text>
               </View>
-              <View style={styles.statCard}>
+
+              <View style={[styles.statCard, shadows.sm]}>
+                <Text style={styles.statLabel}>SELLOS Y ARTISTAS</Text>
+                <Text style={styles.statNumber}>{stats?.totalArtists ?? '-'}</Text>
+              </View>
+
+              <View style={[styles.statCard, shadows.sm]}>
+                <Text style={styles.statLabel}>PISTAS EN MÁSTER</Text>
                 <Text style={styles.statNumber}>{stats?.totalTracks ?? '-'}</Text>
-                <Text style={styles.statTitle}>Pistas</Text>
               </View>
-              <View style={styles.statCard}>
+
+              <View style={[styles.statCard, shadows.sm]}>
+                <Text style={styles.statLabel}>TIRADAS FÍSICAS</Text>
                 <Text style={styles.statNumber}>{stats?.totalPressings ?? '-'}</Text>
-                <Text style={styles.statTitle}>Tiradas</Text>
               </View>
-              <View style={styles.statCard}>
+
+              <View style={[styles.statCard, shadows.sm, { borderColor: colors.accentBorder }]}>
+                <Text style={[styles.statLabel, { color: colors.accent }]}>CINTAS EN CIRCULACIÓN</Text>
                 <Text style={[styles.statNumber, { color: colors.accent }]}>
                   {stats?.totalCopiesCirculating ?? '-'}
                 </Text>
-                <Text style={styles.statTitle}>En Colección</Text>
               </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statNumber}>{stats?.totalPlays ?? '-'}</Text>
-                <Text style={styles.statTitle}>Reproducciones</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={[styles.statNumber, { color: '#38bdf8' }]}>
+
+              <View style={[styles.statCard, shadows.sm, { borderColor: colors.cyanBorder }]}>
+                <Text style={[styles.statLabel, { color: colors.cyan }]}>TRAPASOS / DUBS</Text>
+                <Text style={[styles.statNumber, { color: colors.cyan }]}>
                   {stats?.totalTransfers ?? '-'}
                 </Text>
-                <Text style={styles.statTitle}>Traspasos Dub</Text>
               </View>
             </View>
 
-            {/* Verificación de Artistas */}
-            <Text style={styles.sectionHeader}>Sellos y Artistas</Text>
+            {/* Moderación de Sellos Discográficos */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionHeader}>SELLOS Y ARTISTAS INDEPENDIENTES ({artists.length})</Text>
+            </View>
+
             {artists.map((a) => (
-              <View key={a.id} style={styles.rowCard}>
+              <View key={a.id} style={[styles.rowCard, shadows.sm]}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowTitle}>{a.name}</Text>
-                  <Text style={styles.rowSub}>ID #{a.id} · {a.biography || 'Sin biografía'}</Text>
+                  <Text style={styles.rowSub}>ID #{a.id} · {a.biography || 'Sin biografía añadida'}</Text>
                 </View>
                 {a.verified ? (
                   <View style={styles.badgeVerified}>
                     <Text style={styles.badgeText}>✓ Verificado</Text>
                   </View>
                 ) : (
-                  <Pressable style={styles.verifyBtn} onPress={() => handleVerifyArtist(a)}>
-                    <Text style={styles.verifyBtnText}>Verificar</Text>
+                  <Pressable 
+                    style={({ pressed }) => [
+                      styles.verifyBtn,
+                      pressed && { backgroundColor: colors.accentHover }
+                    ]} 
+                    onPress={() => handleVerifyArtist(a)}
+                  >
+                    <Text style={styles.verifyBtnText}>VERIFICAR SELLO</Text>
                   </Pressable>
                 )}
               </View>
             ))}
 
             {/* Listado y Gestión de Usuarios */}
-            <Text style={styles.sectionHeader}>Gestión de Usuarios ({users.length})</Text>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionHeader}>GESTIÓN DE USUARIOS Y ROLES ({users.length})</Text>
+            </View>
+
             {users.map((u) => (
-              <View key={u.id} style={styles.userCard}>
+              <View key={u.id} style={[styles.userCard, shadows.sm]}>
                 <View style={styles.userTop}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.userDisplayName}>{u.display_name} (@{u.username})</Text>
-                    <Text style={styles.userEmail}>{u.email}</Text>
+                    <Text style={styles.userDisplayName}>{u.display_name}</Text>
+                    <Text style={styles.userHandle}>@{u.username} · {u.email}</Text>
                     <Text style={styles.userRoles}>
-                      Roles: {u.roles.join(', ') || 'sin rol'} · Copias activas: {u.owned_copies_count}
+                      Roles: <Text style={{ color: colors.accent }}>{u.roles.join(', ') || 'sin rol'}</Text> · {u.owned_copies_count} cintas en su poder
                     </Text>
                   </View>
+
                   <Pressable
-                    style={[styles.statusBadge, u.is_active ? styles.statusActive : styles.statusSuspended]}
+                    style={({ pressed }) => [
+                      styles.statusBadge, 
+                      u.is_active ? styles.statusActive : styles.statusSuspended,
+                      pressed && { opacity: 0.8 }
+                    ]}
                     onPress={() => handleToggleStatus(u)}
                   >
-                    <Text style={styles.statusText}>{u.is_active ? 'Activo' : 'Suspendido'}</Text>
+                    <Text style={[styles.statusText, u.is_active ? { color: colors.success } : { color: colors.danger }]}>
+                      {u.is_active ? '● ACTIVO' : '✕ SUSPENDIDO'}
+                    </Text>
                   </Pressable>
                 </View>
 
-                {/* Asignación de Roles */}
+                {/* Botones de Asignación de Rol */}
                 <View style={styles.roleAssignment}>
-                  <Text style={styles.roleAssignLabel}>Asignar Rol:</Text>
+                  <Text style={styles.roleAssignLabel}>ASIGNAR ROL:</Text>
                   <Pressable 
                     style={[styles.roleBtn, u.roles.includes('collector') && styles.roleBtnSelected]} 
                     onPress={() => handleAssignRole(u, 'collector')}
                   >
-                    <Text style={styles.roleBtnText}>Coleccionista</Text>
+                    <Text style={[styles.roleBtnText, u.roles.includes('collector') && styles.roleBtnTextSelected]}>
+                      Coleccionista
+                    </Text>
                   </Pressable>
                   <Pressable 
                     style={[styles.roleBtn, u.roles.includes('artist') && styles.roleBtnSelected]} 
                     onPress={() => handleAssignRole(u, 'artist')}
                   >
-                    <Text style={styles.roleBtnText}>Artista</Text>
+                    <Text style={[styles.roleBtnText, u.roles.includes('artist') && styles.roleBtnTextSelected]}>
+                      Artista
+                    </Text>
                   </Pressable>
                   <Pressable 
                     style={[styles.roleBtn, u.roles.includes('admin') && styles.roleBtnSelected]} 
                     onPress={() => handleAssignRole(u, 'admin')}
                   >
-                    <Text style={styles.roleBtnText}>Admin</Text>
+                    <Text style={[styles.roleBtnText, u.roles.includes('admin') && styles.roleBtnTextSelected]}>
+                      Admin
+                    </Text>
                   </Pressable>
                 </View>
               </View>
@@ -202,18 +244,56 @@ export default function AdminScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: 18, paddingBottom: 40 },
-  title: { color: colors.text, fontSize: 26, fontWeight: '900' },
-  caption: { color: colors.muted, fontSize: 13, marginTop: 4, marginBottom: 16 },
-  sectionHeader: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginTop: 20,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background
+  },
+  topBar: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+    backgroundColor: colors.backgroundElevated
+  },
+  title: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.3
+  },
+  subtitle: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 4,
+    lineHeight: 16
+  },
+  scroll: {
+    padding: 16,
+    paddingBottom: 40,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center'
+  },
+  centerLoading: {
+    paddingVertical: 80,
+    alignItems: 'center',
+    gap: 12
+  },
+  loadingText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  sectionHeaderRow: {
+    marginTop: 18,
     marginBottom: 10
+  },
+  sectionHeader: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8
   },
   statsGrid: {
     flexDirection: 'row',
@@ -221,44 +301,59 @@ const styles = StyleSheet.create({
     gap: 10
   },
   statCard: {
-    width: '31%',
+    width: '48%',
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    padding: 12,
-    alignItems: 'center'
+    borderRadius: 12,
+    padding: 14
   },
-  statNumber: { color: colors.text, fontSize: 20, fontWeight: '900' },
-  statTitle: { color: colors.muted, fontSize: 10, textTransform: 'uppercase', marginTop: 4, textAlign: 'center' },
+  statLabel: {
+    color: colors.muted,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8
+  },
+  statNumber: {
+    color: colors.text,
+    fontSize: 26,
+    fontWeight: '900',
+    marginTop: 6
+  },
   rowCard: {
     backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 14,
-    marginBottom: 10,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: colors.border,
+    gap: 12
   },
-  rowTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  rowTitle: { color: colors.text, fontSize: 15, fontWeight: '800' },
   rowSub: { color: colors.muted, fontSize: 12, marginTop: 2 },
   badgeVerified: {
-    backgroundColor: '#1b2a1a',
+    backgroundColor: colors.successMuted,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: colors.success
+    borderColor: colors.successBorder
   },
   badgeText: { color: colors.success, fontSize: 11, fontWeight: '800' },
   verifyBtn: {
     backgroundColor: colors.accent,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 6
   },
-  verifyBtnText: { color: colors.background, fontWeight: '800', fontSize: 12 },
+  verifyBtnText: {
+    color: colors.background,
+    fontWeight: '900',
+    fontSize: 10,
+    letterSpacing: 0.5
+  },
   userCard: {
     backgroundColor: colors.surface,
     borderRadius: 12,
@@ -267,19 +362,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border
   },
-  userTop: { flexDirection: 'row', alignItems: 'flex-start' },
-  userDisplayName: { color: colors.text, fontSize: 15, fontWeight: '700' },
-  userEmail: { color: colors.muted, fontSize: 12, marginTop: 2 },
-  userRoles: { color: colors.accent, fontSize: 11, marginTop: 4, fontWeight: '600' },
+  userTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12
+  },
+  userDisplayName: { color: colors.text, fontSize: 15, fontWeight: '800' },
+  userHandle: { color: colors.muted, fontSize: 12, marginTop: 2 },
+  userRoles: { color: colors.textSecondary, fontSize: 11, marginTop: 4 },
   statusBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1
   },
-  statusActive: { backgroundColor: '#132817', borderColor: colors.success },
-  statusSuspended: { backgroundColor: '#38161c', borderColor: colors.danger },
-  statusText: { color: colors.text, fontSize: 11, fontWeight: '800' },
+  statusActive: {
+    backgroundColor: colors.successMuted,
+    borderColor: colors.successBorder
+  },
+  statusSuspended: {
+    backgroundColor: colors.dangerMuted,
+    borderColor: colors.dangerBorder
+  },
+  statusText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
   roleAssignment: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -287,11 +392,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: colors.border
+    borderTopColor: colors.borderSubtle,
+    flexWrap: 'wrap'
   },
-  roleAssignLabel: { color: colors.muted, fontSize: 11, fontWeight: '700' },
+  roleAssignLabel: {
+    color: colors.muted,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8
+  },
   roleBtn: {
-    backgroundColor: colors.surfaceLight,
+    backgroundColor: colors.surfaceDark,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -299,8 +410,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border
   },
   roleBtnSelected: {
-    borderColor: colors.accent,
-    backgroundColor: '#1d2212'
+    borderColor: colors.accentBorder,
+    backgroundColor: colors.accentMuted
   },
-  roleBtnText: { color: colors.text, fontSize: 11, fontWeight: '700' }
+  roleBtnText: { color: colors.muted, fontSize: 11, fontWeight: '700' },
+  roleBtnTextSelected: { color: colors.accent, fontWeight: '800' }
 });

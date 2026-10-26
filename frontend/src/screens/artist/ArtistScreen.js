@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { colors } from '../../theme/colors';
+import { colors, shadows } from '../../theme/colors';
 
 export default function ArtistScreen() {
   const { token, user } = useAuth();
@@ -50,7 +50,6 @@ export default function ArtistScreen() {
       setArtists(artistData.artists || []);
       setTracks(trackData.tracks || []);
       
-      // Find artist belonging to current user or first artist if admin
       const found = (artistData.artists || []).find(a => a.owner_user_id === user?.id) || artistData.artists?.[0];
       setMyArtist(found || null);
     } catch (err) {
@@ -99,7 +98,6 @@ export default function ArtistScreen() {
     try {
       setSavingTrack(true);
       if (editingTrack) {
-        // UPDATE (Modificación)
         await apiRequest(`/tracks/${editingTrack.id}`, {
           method: 'PUT',
           token,
@@ -107,7 +105,6 @@ export default function ArtistScreen() {
         });
         Alert.alert('Pista Actualizada', `"${title}" se modificó correctamente.`);
       } else {
-        // CREATE (Alta)
         await apiRequest('/tracks', {
           method: 'POST',
           token,
@@ -188,33 +185,59 @@ export default function ArtistScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Estudio de Artista</Text>
-          <Text style={styles.caption}>
-            {myArtist ? `Sello: ${myArtist.name} (${myArtist.verified ? '✓ Verificado' : 'Pendiente'})` : 'Panel de Gestión Musical'}
-          </Text>
+      {/* Header Superior */}
+      <View style={styles.topBar}>
+        <View style={styles.headerInfo}>
+          <Text style={styles.title}>Estudio Artista</Text>
+          <View style={styles.labelBadgeRow}>
+            <Text style={styles.selloLabel}>SELLO ACTIVO:</Text>
+            <Text style={styles.selloName}>{myArtist?.name || 'Sello de Producción'}</Text>
+            {myArtist?.verified ? (
+              <View style={styles.verifiedTag}>
+                <Text style={styles.verifiedText}>✓ Verificado</Text>
+              </View>
+            ) : (
+              <View style={styles.pendingTag}>
+                <Text style={styles.pendingText}>Pendiente</Text>
+              </View>
+            )}
+          </View>
         </View>
-        <Pressable style={styles.createBtn} onPress={openCreateTrack}>
-          <Text style={styles.createBtnText}>+ Nueva Pista</Text>
+
+        <Pressable 
+          style={({ pressed }) => [
+            styles.createBtn,
+            shadows.glowAccent,
+            pressed && { backgroundColor: colors.accentHover }
+          ]} 
+          onPress={openCreateTrack}
+        >
+          <Text style={styles.createBtnText}>+ NUEVA PISTA</Text>
         </Pressable>
       </View>
 
       {loading ? (
-        <ActivityIndicator color={colors.accent} size="large" style={{ marginTop: 40 }} />
+        <View style={styles.centerLoading}>
+          <ActivityIndicator color={colors.accent} size="large" />
+          <Text style={styles.loadingText}>Cargando catálogo del artista...</Text>
+        </View>
       ) : (
         <FlatList
           data={tracks}
           keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <View style={[styles.card, shadows.sm]}>
               <View style={styles.cardTop}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.trackTitle}>{item.title}</Text>
-                  <Text style={styles.artistName}>{item.artist_name} · {item.license_type}</Text>
+                  <Text style={styles.artistName}>
+                    {item.artist_name} · <Text style={{ color: colors.textSecondary }}>{item.license_type}</Text>
+                  </Text>
                   {item.description ? (
                     <Text style={styles.desc}>{item.description}</Text>
                   ) : null}
@@ -223,22 +246,46 @@ export default function ArtistScreen() {
 
               {/* Botones ABML */}
               <View style={styles.actions}>
-                <Pressable style={styles.pressingBtn} onPress={() => openCreatePressing(item)}>
-                  <Text style={styles.pressingBtnText}>💿 Crear Tirada</Text>
+                <Pressable 
+                  style={({ pressed }) => [
+                    styles.pressingBtn,
+                    pressed && { backgroundColor: colors.accentHover }
+                  ]} 
+                  onPress={() => openCreatePressing(item)}
+                >
+                  <Text style={styles.pressingBtnText}>💿 CREAR TIRADA</Text>
                 </Pressable>
 
-                <Pressable style={styles.editBtn} onPress={() => openEditTrack(item)}>
-                  <Text style={styles.editBtnText}>✎ Editar</Text>
+                <Pressable 
+                  style={({ pressed }) => [
+                    styles.editBtn,
+                    pressed && { backgroundColor: colors.surfaceHover }
+                  ]} 
+                  onPress={() => openEditTrack(item)}
+                >
+                  <Text style={styles.editBtnText}>✎ EDITAR</Text>
                 </Pressable>
 
-                <Pressable style={styles.deleteBtn} onPress={() => handleDeleteTrack(item)}>
+                <Pressable 
+                  style={({ pressed }) => [
+                    styles.deleteBtn,
+                    pressed && { backgroundColor: '#4a1921' }
+                  ]} 
+                  onPress={() => handleDeleteTrack(item)}
+                >
                   <Text style={styles.deleteBtnText}>🗑</Text>
                 </Pressable>
               </View>
             </View>
           )}
           ListEmptyComponent={
-            <Text style={styles.empty}>Todavía no cargaste ninguna pista en tu catálogo.</Text>
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyIcon}>🎙</Text>
+              <Text style={styles.emptyTitle}>Sin grabaciones en tu sello</Text>
+              <Text style={styles.emptySub}>
+                Tocá "+ Nueva Pista" para registrar tu primera canción y luego acuñar tiradas de casetes para los coleccionistas.
+              </Text>
+            </View>
           }
         />
       )}
@@ -246,44 +293,45 @@ export default function ArtistScreen() {
       {/* Modal Alta / Edición de Pista */}
       <Modal visible={trackModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={styles.modalScroll}>
-            <View style={styles.modalBox}>
+          <ScrollView contentContainerStyle={styles.modalScroll} showsVerticalScrollIndicator={false}>
+            <View style={[styles.modalBox, shadows.md]}>
+              <Text style={styles.modalBadge}>GESTIÓN DE CATÁLOGO (ABML)</Text>
               <Text style={styles.modalTitle}>
-                {editingTrack ? 'Modificar Pista' : 'Registrar Nueva Pista'}
+                {editingTrack ? 'Modificar Canción' : 'Alta de Nueva Canción'}
               </Text>
 
-              <Text style={styles.label}>Título de la Pista</Text>
+              <Text style={styles.inputLabel}>TÍTULO DE LA PISTA</Text>
               <TextInput
                 placeholder="Ej: Master of Magnetic Tapes"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={colors.mutedDark}
                 style={styles.input}
                 value={title}
                 onChangeText={setTitle}
               />
 
-              <Text style={styles.label}>Descripción</Text>
+              <Text style={styles.inputLabel}>DESCRIPCIÓN O CONTEXTO HISTÓRICO</Text>
               <TextInput
-                placeholder="Detalles de la grabación, contexto histórico..."
-                placeholderTextColor={colors.muted}
+                placeholder="Detalles de la grabación en vivo, consola analógica..."
+                placeholderTextColor={colors.mutedDark}
                 multiline
-                style={[styles.input, { height: 70 }]}
+                style={[styles.input, { height: 75, textAlignVertical: 'top' }]}
                 value={description}
                 onChangeText={setDescription}
               />
 
-              <Text style={styles.label}>URL del Audio Máster (MP3)</Text>
+              <Text style={styles.inputLabel}>URL DEL AUDIO MÁSTER (MP3)</Text>
               <TextInput
                 placeholder="https://ejemplo.com/audio/master.mp3"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={colors.mutedDark}
                 style={styles.input}
                 value={audioUrl}
                 onChangeText={setAudioUrl}
               />
 
-              <Text style={styles.label}>Tipo de Licencia</Text>
+              <Text style={styles.inputLabel}>TIPO DE LICENCIA (ORIGINAL / DEMO / TAPE-TRADE)</Text>
               <TextInput
                 placeholder="original, demo, tape-trade"
-                placeholderTextColor={colors.muted}
+                placeholderTextColor={colors.mutedDark}
                 style={styles.input}
                 value={licenseType}
                 onChangeText={setLicenseType}
@@ -295,11 +343,11 @@ export default function ArtistScreen() {
                   onPress={() => setTrackModalVisible(false)}
                   disabled={savingTrack}
                 >
-                  <Text style={styles.cancelBtnText}>Cancelar</Text>
+                  <Text style={styles.cancelBtnText}>CANCELAR</Text>
                 </Pressable>
 
                 <Pressable
-                  style={styles.saveBtn}
+                  style={[styles.saveBtn, savingTrack && { opacity: 0.6 }]}
                   onPress={saveTrack}
                   disabled={savingTrack}
                 >
@@ -307,7 +355,7 @@ export default function ArtistScreen() {
                     <ActivityIndicator color={colors.background} size="small" />
                   ) : (
                     <Text style={styles.saveBtnText}>
-                      {editingTrack ? 'Guardar Cambios' : 'Publicar Pista'}
+                      {editingTrack ? 'GUARDAR CAMBIOS' : 'PUBLICAR EN MÁSTER'}
                     </Text>
                   )}
                 </Pressable>
@@ -320,26 +368,27 @@ export default function ArtistScreen() {
       {/* Modal Crear Tirada */}
       <Modal visible={pressingModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
+          <View style={[styles.modalBox, shadows.md]}>
+            <Text style={styles.modalBadge}>ACUÑACIÓN FÍSICA</Text>
             <Text style={styles.modalTitle}>Crear Tirada Limitada</Text>
-            <Text style={styles.modalDesc}>
-              Acuñar copias físicas de "{selectedTrackForPressing?.title}"
+            <Text style={styles.modalTrackSub}>
+              Pista seleccionada: "{selectedTrackForPressing?.title}"
             </Text>
 
-            <Text style={styles.label}>Cantidad Total de Copias Físicas</Text>
+            <Text style={styles.inputLabel}>CANTIDAD TOTAL DE COPIAS FÍSICAS</Text>
             <TextInput
               placeholder="10"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.mutedDark}
               keyboardType="number-pad"
               style={styles.input}
               value={totalCopies}
               onChangeText={setTotalCopies}
             />
 
-            <Text style={styles.label}>Límite de Generaciones Permitidas</Text>
+            <Text style={styles.inputLabel}>LÍMITE MÁXIMO DE GENERACIONES DUBBEO</Text>
             <TextInput
               placeholder="5"
-              placeholderTextColor={colors.muted}
+              placeholderTextColor={colors.mutedDark}
               keyboardType="number-pad"
               style={styles.input}
               value={generationLimit}
@@ -352,18 +401,18 @@ export default function ArtistScreen() {
                 onPress={() => setPressingModalVisible(false)}
                 disabled={savingPressing}
               >
-                <Text style={styles.cancelBtnText}>Cancelar</Text>
+                <Text style={styles.cancelBtnText}>CANCELAR</Text>
               </Pressable>
 
               <Pressable
-                style={styles.saveBtn}
+                style={[styles.saveBtn, savingPressing && { opacity: 0.6 }]}
                 onPress={savePressing}
                 disabled={savingPressing}
               >
                 {savingPressing ? (
                   <ActivityIndicator color={colors.background} size="small" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Acuñar Tirada</Text>
+                  <Text style={styles.saveBtnText}>ACUÑAR TIRADA</Text>
                 )}
               </Pressable>
             </View>
@@ -375,43 +424,152 @@ export default function ArtistScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: 18 },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16
+  container: {
+    flex: 1,
+    backgroundColor: colors.background
   },
-  title: { color: colors.text, fontSize: 26, fontWeight: '900' },
-  caption: { color: colors.accent, fontSize: 13, marginTop: 2, fontWeight: '600' },
+  topBar: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+    backgroundColor: colors.backgroundElevated,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  headerInfo: { flex: 1 },
+  title: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.3
+  },
+  labelBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    flexWrap: 'wrap'
+  },
+  selloLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5
+  },
+  selloName: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  verifiedTag: {
+    backgroundColor: colors.successMuted,
+    borderWidth: 1,
+    borderColor: colors.successBorder,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4
+  },
+  verifiedText: {
+    color: colors.success,
+    fontSize: 9,
+    fontWeight: '800'
+  },
+  pendingTag: {
+    backgroundColor: colors.warningMuted,
+    borderWidth: 1,
+    borderColor: colors.warningBorder,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4
+  },
+  pendingText: {
+    color: colors.warning,
+    fontSize: 9,
+    fontWeight: '800'
+  },
   createBtn: {
     backgroundColor: colors.accent,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 8
   },
-  createBtnText: { color: colors.background, fontWeight: '900', fontSize: 13 },
+  createBtnText: {
+    color: colors.background,
+    fontWeight: '900',
+    fontSize: 11,
+    letterSpacing: 0.8
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center'
+  },
+  centerLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12
+  },
+  loadingText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '600'
+  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: 14,
-    padding: 16,
+    padding: 18,
     marginBottom: 14,
     borderWidth: 1,
     borderColor: colors.border
   },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start' },
-  trackTitle: { color: colors.text, fontSize: 17, fontWeight: '700' },
-  artistName: { color: colors.muted, fontSize: 13, marginTop: 2 },
-  desc: { color: colors.text, fontSize: 12, marginTop: 8, opacity: 0.8 },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  trackTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.2
+  },
+  artistName: {
+    color: colors.muted,
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: '600'
+  },
+  desc: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 18
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle
+  },
   pressingBtn: {
     flex: 2,
     backgroundColor: colors.accent,
     paddingVertical: 10,
     borderRadius: 8,
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  pressingBtnText: { color: colors.background, fontWeight: '800', fontSize: 13 },
+  pressingBtnText: {
+    color: colors.background,
+    fontWeight: '900',
+    fontSize: 11,
+    letterSpacing: 0.5
+  },
   editBtn: {
     flex: 1.5,
     backgroundColor: colors.surfaceLight,
@@ -419,20 +577,30 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingVertical: 10,
     borderRadius: 8,
-    alignItems: 'center'
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  editBtnText: { color: colors.text, fontWeight: '700', fontSize: 13 },
+  editBtnText: {
+    color: colors.textSecondary,
+    fontWeight: '800',
+    fontSize: 11,
+    letterSpacing: 0.5
+  },
   deleteBtn: {
-    backgroundColor: '#3f151e',
+    backgroundColor: colors.dangerMuted,
     borderWidth: 1,
-    borderColor: colors.danger,
+    borderColor: colors.dangerBorder,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  deleteBtnText: { color: colors.danger, fontWeight: '900', fontSize: 14 },
+  deleteBtnText: {
+    color: colors.danger,
+    fontWeight: '900',
+    fontSize: 14
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
@@ -443,30 +611,83 @@ const styles = StyleSheet.create({
   modalBox: {
     backgroundColor: colors.surface,
     borderRadius: 16,
-    padding: 20,
+    padding: 22,
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: colors.border,
+    maxWidth: 500,
+    width: '100%',
+    alignSelf: 'center'
   },
-  modalTitle: { color: colors.text, fontSize: 20, fontWeight: '800', marginBottom: 12 },
-  modalDesc: { color: colors.accent, fontSize: 13, marginBottom: 16, fontWeight: '600' },
-  label: { color: colors.muted, fontSize: 12, fontWeight: '700', marginTop: 10, marginBottom: 4 },
+  modalBadge: {
+    color: colors.accent,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: 4
+  },
+  modalTitle: { color: colors.text, fontSize: 20, fontWeight: '900' },
+  modalTrackSub: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginTop: 4,
+    marginBottom: 16,
+    fontWeight: '600'
+  },
+  inputLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginTop: 12,
+    marginBottom: 6
+  },
   input: {
-    backgroundColor: '#111115',
+    backgroundColor: colors.surfaceDark,
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
-    padding: 12
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14
   },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 20
+  },
   cancelBtn: { padding: 12 },
-  cancelBtnText: { color: colors.muted, fontWeight: '700' },
+  cancelBtnText: {
+    color: colors.muted,
+    fontWeight: '800',
+    fontSize: 12,
+    letterSpacing: 0.5
+  },
   saveBtn: {
     backgroundColor: colors.accent,
     paddingVertical: 12,
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     borderRadius: 8
   },
-  saveBtnText: { color: colors.background, fontWeight: '900' },
-  empty: { color: colors.muted, textAlign: 'center', marginTop: 40 }
+  saveBtnText: {
+    color: colors.background,
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.5
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24
+  },
+  emptyIcon: { fontSize: 40, marginBottom: 12 },
+  emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
+  emptySub: {
+    color: colors.muted,
+    textAlign: 'center',
+    fontSize: 13,
+    marginTop: 6,
+    lineHeight: 18
+  }
 });
