@@ -1,3 +1,4 @@
+// Endpoints del catálogo y sus pistas musicales.
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
 import { 

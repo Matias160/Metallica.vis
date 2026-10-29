@@ -1,24 +1,52 @@
+// Estudio de artista: ABML de catálogo, subida de archivos de audio locales, presets y acuñación de tiradas.
 import { useEffect, useState } from 'react';
-import { 
-  ActivityIndicator, 
-  Alert, 
-  FlatList, 
-  Modal, 
-  Pressable, 
-  RefreshControl, 
-  SafeAreaView, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  TextInput, 
-  View 
+import {
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
 } from 'react-native';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { colors, shadows } from '../../theme/colors';
+import { useFeedback } from '../../context/FeedbackContext';
+import { useTheme } from '../../context/ThemeContext';
+import { shadows } from '../../theme/colors';
+
+// Presets de demostración de audio máster analógico
+const AUDIO_PRESETS = [
+  {
+    id: 'p1',
+    name: 'Soundboard Master Reel (1983 Demo Tape)',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    desc: 'Cinta directa de consola de mezclas, sin compresión digital.'
+  },
+  {
+    id: 'p2',
+    name: 'Studio 24-Track Multitrack (1984 Raw Mix)',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    desc: 'Toma cruda de ensayo en cinta Chrome Type II.'
+  },
+  {
+    id: 'p3',
+    name: 'Live Roskilde Festival Soundboard (1986 Master)',
+    url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    desc: 'Grabación de audio en vivo con acústica de escenario analógica.'
+  }
+];
 
 export default function ArtistScreen() {
   const { token, user } = useAuth();
+  const { palette, isDark, toggleTheme } = useTheme();
+  const { notify } = useFeedback();
+
   const [tracks, setTracks] = useState([]);
   const [artists, setArtists] = useState([]);
   const [myArtist, setMyArtist] = useState(null);
@@ -31,8 +59,15 @@ export default function ArtistScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [audioUrl, setAudioUrl] = useState('');
+  const [coverUrl, setCoverUrl] = useState('');
   const [licenseType, setLicenseType] = useState('original');
   const [savingTrack, setSavingTrack] = useState(false);
+
+  // Métodos de subida de música: 'upload', 'url', 'presets'
+  const [uploadSourceMode, setUploadSourceMode] = useState('upload');
+  const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [uploadedFileSize, setUploadedFileSize] = useState('');
 
   // Modal para Crear Tirada (Pressing)
   const [pressingModalVisible, setPressingModalVisible] = useState(false);
@@ -49,8 +84,10 @@ export default function ArtistScreen() {
       ]);
       setArtists(artistData.artists || []);
       setTracks(trackData.tracks || []);
-      
-      const found = (artistData.artists || []).find(a => a.owner_user_id === user?.id) || artistData.artists?.[0];
+
+      const found =
+        (artistData.artists || []).find((a) => a.owner_user_id === user?.id) ||
+        artistData.artists?.[0];
       setMyArtist(found || null);
     } catch (err) {
       console.warn('Error cargando estudio:', err);
@@ -71,8 +108,12 @@ export default function ArtistScreen() {
     setEditingTrack(null);
     setTitle('');
     setDescription('');
-    setAudioUrl('https://example.com/audio/master-tape.mp3');
+    setAudioUrl('');
+    setCoverUrl('');
     setLicenseType('original');
+    setUploadedFileName('');
+    setUploadedFileSize('');
+    setUploadSourceMode('upload');
     setTrackModalVisible(true);
   }
 
@@ -81,17 +122,116 @@ export default function ArtistScreen() {
     setTitle(track.title);
     setDescription(track.description || '');
     setAudioUrl(track.audio_url || '');
+    setCoverUrl(track.cover_url || '');
     setLicenseType(track.license_type || 'original');
+    setUploadedFileName('');
+    setUploadedFileSize('');
+    setUploadSourceMode('url');
     setTrackModalVisible(true);
+  }
+
+  // Manejador para subir archivos de audio locales directamente desde la máquina o dispositivo
+  function handleSelectLocalAudioFile() {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'audio/*';
+
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+          setUploadingAudio(true);
+          const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+          setUploadedFileName(file.name);
+          setUploadedFileSize(`${sizeMB} MB`);
+
+          // Leer archivo como Base64
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = async () => {
+            try {
+              const base64Data = reader.result;
+              const res = await apiRequest('/upload', {
+                method: 'POST',
+                body: {
+                  filename: file.name,
+                  base64: base64Data,
+                  mimeType: file.type || 'audio/mpeg'
+                }
+              });
+
+              setAudioUrl(res.url);
+              if (!title) {
+                // Auto-rellenar título con nombre de archivo limpio
+                const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+                setTitle(cleanName);
+              }
+
+              notify('Audio subido exitosamente', `Archivo listo: ${file.name} (${sizeMB} MB).`, 'success');
+            } catch (uploadErr) {
+              notify('Error al subir audio', uploadErr.message, 'error');
+            } finally {
+              setUploadingAudio(false);
+            }
+          };
+        } catch (err) {
+          setUploadingAudio(false);
+          notify('Error de lectura', err.message, 'error');
+        }
+      };
+
+      input.click();
+    } else {
+      // En entorno móvil nativo se ofrece el selector o preset
+      notify('Selector Móvil', 'Seleccionando preset o enlace remoto de audio.', 'info');
+      setUploadSourceMode('presets');
+    }
+  }
+
+  // Manejador para subir imagen de portada / carátula
+  function handleSelectCoverImage() {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = async () => {
+            const res = await apiRequest('/upload', {
+              method: 'POST',
+              body: {
+                filename: file.name,
+                base64: reader.result,
+                mimeType: file.type || 'image/jpeg'
+              }
+            });
+            setCoverUrl(res.url);
+            notify('Arte de tapa subido', `Carátula guardada: ${file.name}.`, 'success');
+          };
+        } catch (err) {
+          notify('Error al subir carátula', err.message, 'error');
+        }
+      };
+
+      input.click();
+    }
   }
 
   async function saveTrack() {
     if (!title.trim() || !audioUrl.trim()) {
-      Alert.alert('Datos requeridos', 'Título y URL de audio son obligatorios.');
+      notify('Datos requeridos', 'Título y Audio (archivo subido o URL) son obligatorios.', 'warning');
       return;
     }
     if (!myArtist) {
-      Alert.alert('Atención', 'Necesitás tener un perfil de artista activo y verificado.');
+      notify('Perfil pendiente', 'Necesitás un perfil de artista activo.', 'warning');
       return;
     }
 
@@ -101,47 +241,41 @@ export default function ArtistScreen() {
         await apiRequest(`/tracks/${editingTrack.id}`, {
           method: 'PUT',
           token,
-          body: { title, description, audioUrl, licenseType }
+          body: { title, description, audioUrl, coverUrl, licenseType }
         });
-        Alert.alert('Pista Actualizada', `"${title}" se modificó correctamente.`);
+        notify('Pista actualizada', `“${title}” se modificó correctamente.`, 'success');
       } else {
         await apiRequest('/tracks', {
           method: 'POST',
           token,
-          body: { artistId: myArtist.id, title, description, audioUrl, licenseType }
+          body: {
+            artistId: myArtist.id,
+            title,
+            description,
+            audioUrl,
+            coverUrl,
+            licenseType
+          }
         });
-        Alert.alert('Pista Creada', `"${title}" fue registrada en el máster.`);
+        notify('Pista creada', `“${title}” fue registrada en el máster oficial.`, 'success');
       }
       setTrackModalVisible(false);
       await loadData();
     } catch (err) {
-      Alert.alert('Error al guardar pista', err.message);
+      notify('No se pudo guardar la pista', err.message, 'error');
     } finally {
       setSavingTrack(false);
     }
   }
 
   async function handleDeleteTrack(track) {
-    Alert.alert(
-      'Eliminar Pista (Baja)',
-      `¿Confirmás eliminar "${track.title}" del catálogo? Solo es posible si no posee copias en circulación.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await apiRequest(`/tracks/${track.id}`, { method: 'DELETE', token });
-              Alert.alert('Pista eliminada', 'La pista fue removida del catálogo.');
-              await loadData();
-            } catch (err) {
-              Alert.alert('No se pudo eliminar', err.message);
-            }
-          }
-        }
-      ]
-    );
+    try {
+      await apiRequest(`/tracks/${track.id}`, { method: 'DELETE', token });
+      notify('Pista eliminada', `“${track.title}” fue removida del catálogo.`, 'info');
+      await loadData();
+    } catch (err) {
+      notify('No se pudo eliminar la pista', err.message, 'error');
+    }
   }
 
   function openCreatePressing(track) {
@@ -155,7 +289,7 @@ export default function ArtistScreen() {
     const copiesNum = parseInt(totalCopies, 10);
     const genNum = parseInt(generationLimit, 10);
     if (isNaN(copiesNum) || copiesNum < 1) {
-      Alert.alert('Atención', 'Ingresá una cantidad válida de copias.');
+      notify('Cantidad inválida', 'Ingresá una cantidad válida de copias.', 'warning');
       return;
     }
 
@@ -171,55 +305,83 @@ export default function ArtistScreen() {
         }
       });
       setPressingModalVisible(false);
-      Alert.alert(
-        '¡Tirada Creada!',
-        `Se acuñaron ${res.copiesCreated} copias físicas para "${selectedTrackForPressing.title}". Ahora están disponibles en el Catálogo.`
+      notify(
+        'Tirada acuñada',
+        `Se crearon ${res.copiesCreated} copias físicas para “${selectedTrackForPressing.title}”.`,
+        'success'
       );
       await loadData();
     } catch (err) {
-      Alert.alert('Error creando tirada', err.message);
+      notify('No se pudo acuñar la tirada', err.message, 'error');
     } finally {
       setSavingPressing(false);
     }
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header Superior */}
-      <View style={styles.topBar}>
-        <View style={styles.headerInfo}>
-          <Text style={styles.title}>Estudio Artista</Text>
-          <View style={styles.labelBadgeRow}>
-            <Text style={styles.selloLabel}>SELLO ACTIVO:</Text>
-            <Text style={styles.selloName}>{myArtist?.name || 'Sello de Producción'}</Text>
-            {myArtist?.verified ? (
-              <View style={styles.verifiedTag}>
-                <Text style={styles.verifiedText}>✓ Verificado</Text>
-              </View>
-            ) : (
-              <View style={styles.pendingTag}>
-                <Text style={styles.pendingText}>Pendiente</Text>
-              </View>
-            )}
+    <SafeAreaView style={[styles.container, { backgroundColor: palette.background }]}>
+      {/* Consola de Grabación Superior con Conmutador Día/Noche */}
+      <View
+        style={[
+          styles.topBar,
+          { backgroundColor: palette.backgroundElevated, borderBottomColor: palette.borderSubtle }
+        ]}
+      >
+        <View style={styles.topBarInner}>
+          <View style={styles.headerInfo}>
+            <View style={styles.badgeRow}>
+              <View style={[styles.recIndicator, { backgroundColor: palette.danger }]} />
+              <Text style={[styles.badgeRowText, { color: palette.muted }]}>
+                CONSOLA DE GRABACIÓN & MASTERING
+              </Text>
+            </View>
+            <Text style={[styles.title, { color: palette.text }]}>Estudio Artista</Text>
+
+            <View style={styles.labelBadgeRow}>
+              <Text style={[styles.selloLabel, { color: palette.muted }]}>SELLO:</Text>
+              <Text style={[styles.selloName, { color: palette.accent }]}>
+                {myArtist?.name || 'Sello Independiente'}
+              </Text>
+              {myArtist?.verified ? (
+                <View style={[styles.verifiedTag, { backgroundColor: palette.successMuted, borderColor: palette.successBorder }]}>
+                  <Text style={[styles.verifiedText, { color: palette.success }]}>✓ Verificado</Text>
+                </View>
+              ) : (
+                <View style={[styles.pendingTag, { backgroundColor: palette.warningMuted, borderColor: palette.warningBorder }]}>
+                  <Text style={[styles.pendingText, { color: palette.warning }]}>Pendiente</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.headerRightActions}>
+            <Pressable
+              style={[styles.themeBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
+              onPress={toggleTheme}
+            >
+              <Text style={[styles.themeBtnText, { color: palette.text }]}>
+                {isDark ? '☀ DÍA' : '◐ NOCHE'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.createBtn, { backgroundColor: palette.accent }, shadows.glowAccent]}
+              onPress={openCreateTrack}
+            >
+              <Text style={[styles.createBtnText, { color: palette.background }]}>
+                + SUBIR MÚSICA
+              </Text>
+            </Pressable>
           </View>
         </View>
-
-        <Pressable 
-          style={({ pressed }) => [
-            styles.createBtn,
-            shadows.glowAccent,
-            pressed && { backgroundColor: colors.accentHover }
-          ]} 
-          onPress={openCreateTrack}
-        >
-          <Text style={styles.createBtnText}>+ NUEVA PISTA</Text>
-        </Pressable>
       </View>
 
       {loading ? (
         <View style={styles.centerLoading}>
-          <ActivityIndicator color={colors.accent} size="large" />
-          <Text style={styles.loadingText}>Cargando catálogo del artista...</Text>
+          <ActivityIndicator color={palette.accent} size="large" />
+          <Text style={[styles.loadingText, { color: palette.muted }]}>
+            Conectando a la mesa de audio...
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -228,52 +390,59 @@ export default function ArtistScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.accent} />
           }
           renderItem={({ item }) => (
-            <View style={[styles.card, shadows.sm]}>
+            <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }, shadows.sm]}>
               <View style={styles.cardTop}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.trackTitle}>{item.title}</Text>
-                  <Text style={styles.artistName}>
-                    {item.artist_name} · <Text style={{ color: colors.textSecondary }}>{item.license_type}</Text>
+                <View style={styles.trackMetaHeader}>
+                  <Text style={[styles.trackTitle, { color: palette.text }]}>{item.title}</Text>
+                  <View style={[styles.licensePill, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}>
+                    <Text style={[styles.licenseText, { color: palette.muted }]}>
+                      {item.license_type || 'ORIGINAL'}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.artistName, { color: palette.muted }]}>
+                  Por <Text style={{ color: palette.accent, fontWeight: '800' }}>{item.artist_name}</Text>
+                </Text>
+
+                {item.description ? (
+                  <Text style={[styles.desc, { color: palette.textSecondary }]}>{item.description}</Text>
+                ) : null}
+
+                <View style={[styles.audioUrlBox, { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle }]}>
+                  <Text style={[styles.audioUrlLabel, { color: palette.muted }]}>MÁSTER:</Text>
+                  <Text style={[styles.audioUrlText, { color: palette.cyan }]} numberOfLines={1}>
+                    {item.audio_url}
                   </Text>
-                  {item.description ? (
-                    <Text style={styles.desc}>{item.description}</Text>
-                  ) : null}
                 </View>
               </View>
 
-              {/* Botones ABML */}
-              <View style={styles.actions}>
-                <Pressable 
-                  style={({ pressed }) => [
-                    styles.pressingBtn,
-                    pressed && { backgroundColor: colors.accentHover }
-                  ]} 
+              {/* Botones de Operación ABML */}
+              <View style={[styles.actions, { borderTopColor: palette.borderSubtle }]}>
+                <Pressable
+                  style={[styles.pressingBtn, { backgroundColor: palette.accent }]}
                   onPress={() => openCreatePressing(item)}
                 >
-                  <Text style={styles.pressingBtnText}>💿 CREAR TIRADA</Text>
+                  <Text style={[styles.pressingBtnText, { color: palette.background }]}>
+                    💿 ACUÑAR TIRADA FÍSICA
+                  </Text>
                 </Pressable>
 
-                <Pressable 
-                  style={({ pressed }) => [
-                    styles.editBtn,
-                    pressed && { backgroundColor: colors.surfaceHover }
-                  ]} 
+                <Pressable
+                  style={[styles.editBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
                   onPress={() => openEditTrack(item)}
                 >
-                  <Text style={styles.editBtnText}>✎ EDITAR</Text>
+                  <Text style={[styles.editBtnText, { color: palette.textSecondary }]}>✎ EDITAR</Text>
                 </Pressable>
 
-                <Pressable 
-                  style={({ pressed }) => [
-                    styles.deleteBtn,
-                    pressed && { backgroundColor: '#4a1921' }
-                  ]} 
+                <Pressable
+                  style={[styles.deleteBtn, { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder }]}
                   onPress={() => handleDeleteTrack(item)}
                 >
-                  <Text style={styles.deleteBtnText}>🗑</Text>
+                  <Text style={[styles.deleteBtnText, { color: palette.danger }]}>🗑</Text>
                 </Pressable>
               </View>
             </View>
@@ -281,58 +450,170 @@ export default function ArtistScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>🎙</Text>
-              <Text style={styles.emptyTitle}>Sin grabaciones en tu sello</Text>
-              <Text style={styles.emptySub}>
-                Tocá "+ Nueva Pista" para registrar tu primera canción y luego acuñar tiradas de casetes para los coleccionistas.
+              <Text style={[styles.emptyTitle, { color: palette.text }]}>Sin grabaciones en tu máster</Text>
+              <Text style={[styles.emptySub, { color: palette.muted }]}>
+                Tocá "+ Subir Música" para cargar archivos de audio locales (MP3/WAV/FLAC), o seleccionar presets de cinta analógica.
               </Text>
             </View>
           }
         />
       )}
 
-      {/* Modal Alta / Edición de Pista */}
+      {/* ================= MODAL DE SUBIDA MULTI-FORMATO DE AUDIO ================= */}
       <Modal visible={trackModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <ScrollView contentContainerStyle={styles.modalScroll} showsVerticalScrollIndicator={false}>
-            <View style={[styles.modalBox, shadows.md]}>
-              <Text style={styles.modalBadge}>GESTIÓN DE CATÁLOGO (ABML)</Text>
-              <Text style={styles.modalTitle}>
-                {editingTrack ? 'Modificar Canción' : 'Alta de Nueva Canción'}
+            <View style={[styles.modalBox, { backgroundColor: palette.surface, borderColor: palette.border }, shadows.lg]}>
+              <Text style={[styles.modalBadge, { color: palette.accent }]}>ESTUDIO DE MASTERIZACIÓN</Text>
+              <Text style={[styles.modalTitle, { color: palette.text }]}>
+                {editingTrack ? 'Modificar Canción' : 'Subir Nueva Grabación Máster'}
               </Text>
 
-              <Text style={styles.inputLabel}>TÍTULO DE LA PISTA</Text>
+              {/* Selector de Método de Subida */}
+              <View style={styles.sourceSelectorRow}>
+                {[
+                  { id: 'upload', label: '📁 Subir Archivo' },
+                  { id: 'url', label: '🌐 Enlace Web' },
+                  { id: 'presets', label: '🎙 Presets Máster' }
+                ].map((m) => (
+                  <Pressable
+                    key={m.id}
+                    style={[
+                      styles.sourceTab,
+                      { backgroundColor: palette.surfaceDark, borderColor: palette.border },
+                      uploadSourceMode === m.id && [styles.sourceTabActive, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]
+                    ]}
+                    onPress={() => setUploadSourceMode(m.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.sourceTabText,
+                        { color: uploadSourceMode === m.id ? palette.accent : palette.muted }
+                      ]}
+                    >
+                      {m.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {/* Zona de Subida según Método Seleccionado */}
+              {uploadSourceMode === 'upload' && (
+                <View style={[styles.dropZone, { backgroundColor: palette.surfaceDark, borderColor: palette.accent }]}>
+                  <Text style={styles.dropZoneIcon}>🎵</Text>
+                  <Text style={[styles.dropZoneTitle, { color: palette.text }]}>
+                    {uploadedFileName ? 'Archivo Seleccionado:' : 'Seleccionar Archivo de Audio'}
+                  </Text>
+
+                  {uploadedFileName ? (
+                    <View style={styles.fileSelectedBox}>
+                      <Text style={[styles.fileNameText, { color: palette.accent }]}>
+                        {uploadedFileName}
+                      </Text>
+                      <Text style={[styles.fileSizeText, { color: palette.muted }]}>
+                        {uploadedFileSize} · Subido y Enlazado al Máster
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={[styles.dropZoneSub, { color: palette.muted }]}>
+                      Soporta MP3, WAV, FLAC, OGG y M4A hasta 50MB.
+                    </Text>
+                  )}
+
+                  <Pressable
+                    style={[styles.uploadPickBtn, { backgroundColor: palette.accent }]}
+                    onPress={handleSelectLocalAudioFile}
+                    disabled={uploadingAudio}
+                  >
+                    {uploadingAudio ? (
+                      <ActivityIndicator color={palette.background} size="small" />
+                    ) : (
+                      <Text style={[styles.uploadPickBtnText, { color: palette.background }]}>
+                        {uploadedFileName ? 'CAMBIAR ARCHIVO LOCAL' : 'EXPLORAR MI DISPOSITIVO'}
+                      </Text>
+                    )}
+                  </Pressable>
+                </View>
+              )}
+
+              {uploadSourceMode === 'url' && (
+                <View style={styles.urlInputBox}>
+                  <Text style={[styles.inputLabel, { color: palette.muted }]}>URL DEL STREAMING DIRECTO (MP3 / WAV)</Text>
+                  <TextInput
+                    placeholder="https://ejemplo.com/audio/master-soundboard.mp3"
+                    placeholderTextColor={palette.mutedDark}
+                    style={[styles.input, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
+                    value={audioUrl}
+                    onChangeText={setAudioUrl}
+                  />
+                </View>
+              )}
+
+              {uploadSourceMode === 'presets' && (
+                <View style={styles.presetsList}>
+                  <Text style={[styles.inputLabel, { color: palette.muted }]}>
+                    PRESETS DE CINTA DE PRUEBA RÁPIDA:
+                  </Text>
+                  {AUDIO_PRESETS.map((p) => (
+                    <Pressable
+                      key={p.id}
+                      style={[
+                        styles.presetCard,
+                        { backgroundColor: palette.surfaceDark, borderColor: palette.border },
+                        audioUrl === p.url && { borderColor: palette.accent, backgroundColor: palette.accentMuted }
+                      ]}
+                      onPress={() => {
+                        setAudioUrl(p.url);
+                        if (!title) setTitle(p.name);
+                        notify('Preset Cargado', `Seleccionado: ${p.name}.`, 'info');
+                      }}
+                    >
+                      <Text style={[styles.presetName, { color: audioUrl === p.url ? palette.accent : palette.text }]}>
+                        {p.name}
+                      </Text>
+                      <Text style={[styles.presetDesc, { color: palette.muted }]}>{p.desc}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
+              {/* Metadatos Generales */}
+              <Text style={[styles.inputLabel, { color: palette.muted, marginTop: 14 }]}>TÍTULO DE LA PISTA</Text>
               <TextInput
                 placeholder="Ej: Master of Magnetic Tapes"
-                placeholderTextColor={colors.mutedDark}
-                style={styles.input}
+                placeholderTextColor={palette.mutedDark}
+                style={[styles.input, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
                 value={title}
                 onChangeText={setTitle}
               />
 
-              <Text style={styles.inputLabel}>DESCRIPCIÓN O CONTEXTO HISTÓRICO</Text>
+              <Text style={[styles.inputLabel, { color: palette.muted }]}>DESCRIPCIÓN HISTÓRICA O DE CONSOLA</Text>
               <TextInput
-                placeholder="Detalles de la grabación en vivo, consola analógica..."
-                placeholderTextColor={colors.mutedDark}
+                placeholder="Detalles de la grabación analógica, mesa, cinta..."
+                placeholderTextColor={palette.mutedDark}
                 multiline
-                style={[styles.input, { height: 75, textAlignVertical: 'top' }]}
+                style={[styles.input, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text, height: 60, textAlignVertical: 'top' }]}
                 value={description}
                 onChangeText={setDescription}
               />
 
-              <Text style={styles.inputLabel}>URL DEL AUDIO MÁSTER (MP3)</Text>
-              <TextInput
-                placeholder="https://ejemplo.com/audio/master.mp3"
-                placeholderTextColor={colors.mutedDark}
-                style={styles.input}
-                value={audioUrl}
-                onChangeText={setAudioUrl}
-              />
+              {/* Botón Opcional para Subir Arte de Portada */}
+              <View style={styles.coverUploadRow}>
+                <Pressable
+                  style={[styles.coverPickBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
+                  onPress={handleSelectCoverImage}
+                >
+                  <Text style={[styles.coverPickText, { color: palette.textSecondary }]}>
+                    📷 {coverUrl ? 'CAMBIAR ARTE DE CARÁTULA' : '+ SUBIR CARÁTULA (OPCIONAL)'}
+                  </Text>
+                </Pressable>
+              </View>
 
-              <Text style={styles.inputLabel}>TIPO DE LICENCIA (ORIGINAL / DEMO / TAPE-TRADE)</Text>
+              <Text style={[styles.inputLabel, { color: palette.muted }]}>TIPO DE LICENCIA (ORIGINAL / SOUNDBOARD / TAPE-TRADE)</Text>
               <TextInput
-                placeholder="original, demo, tape-trade"
-                placeholderTextColor={colors.mutedDark}
-                style={styles.input}
+                placeholder="original, soundboard, tape-trade"
+                placeholderTextColor={palette.mutedDark}
+                style={[styles.input, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
                 value={licenseType}
                 onChangeText={setLicenseType}
               />
@@ -343,18 +624,18 @@ export default function ArtistScreen() {
                   onPress={() => setTrackModalVisible(false)}
                   disabled={savingTrack}
                 >
-                  <Text style={styles.cancelBtnText}>CANCELAR</Text>
+                  <Text style={[styles.cancelBtnText, { color: palette.muted }]}>CANCELAR</Text>
                 </Pressable>
 
                 <Pressable
-                  style={[styles.saveBtn, savingTrack && { opacity: 0.6 }]}
+                  style={[styles.saveBtn, { backgroundColor: palette.accent }, savingTrack && { opacity: 0.6 }]}
                   onPress={saveTrack}
                   disabled={savingTrack}
                 >
                   {savingTrack ? (
-                    <ActivityIndicator color={colors.background} size="small" />
+                    <ActivityIndicator color={palette.background} size="small" />
                   ) : (
-                    <Text style={styles.saveBtnText}>
+                    <Text style={[styles.saveBtnText, { color: palette.background }]}>
                       {editingTrack ? 'GUARDAR CAMBIOS' : 'PUBLICAR EN MÁSTER'}
                     </Text>
                   )}
@@ -365,32 +646,32 @@ export default function ArtistScreen() {
         </View>
       </Modal>
 
-      {/* Modal Crear Tirada */}
-      <Modal visible={pressingModalVisible} transparent animationType="fade">
+      {/* Modal Acuñar Tirada Física */}
+      <Modal visible={pressingModalVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, shadows.md]}>
-            <Text style={styles.modalBadge}>ACUÑACIÓN FÍSICA</Text>
-            <Text style={styles.modalTitle}>Crear Tirada Limitada</Text>
-            <Text style={styles.modalTrackSub}>
-              Pista seleccionada: "{selectedTrackForPressing?.title}"
+          <View style={[styles.modalBox, { backgroundColor: palette.surface, borderColor: palette.border }, shadows.lg]}>
+            <Text style={[styles.modalBadge, { color: palette.accent }]}>PRENSAJE FÍSICO LIMITADO</Text>
+            <Text style={[styles.modalTitle, { color: palette.text }]}>Acuñar Tirada Oficial</Text>
+            <Text style={[styles.modalSubDesc, { color: palette.textSecondary }]}>
+              Vas a emitir una tirada numerada de casetes y vinilos para “{selectedTrackForPressing?.title}”.
             </Text>
 
-            <Text style={styles.inputLabel}>CANTIDAD TOTAL DE COPIAS FÍSICAS</Text>
+            <Text style={[styles.inputLabel, { color: palette.muted }]}>CANTIDAD TOTAL DE COPIAS A PRENSAR</Text>
             <TextInput
-              placeholder="10"
-              placeholderTextColor={colors.mutedDark}
+              placeholder="Ej: 15"
+              placeholderTextColor={palette.mutedDark}
               keyboardType="number-pad"
-              style={styles.input}
+              style={[styles.input, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
               value={totalCopies}
               onChangeText={setTotalCopies}
             />
 
-            <Text style={styles.inputLabel}>LÍMITE MÁXIMO DE GENERACIONES DUBBEO</Text>
+            <Text style={[styles.inputLabel, { color: palette.muted }]}>LÍMITE DE GENERACIÓN DE DUBBEO</Text>
             <TextInput
-              placeholder="5"
-              placeholderTextColor={colors.mutedDark}
+              placeholder="Ej: 5 (máximo salto de copia permitida)"
+              placeholderTextColor={palette.mutedDark}
               keyboardType="number-pad"
-              style={styles.input}
+              style={[styles.input, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
               value={generationLimit}
               onChangeText={setGenerationLimit}
             />
@@ -401,18 +682,18 @@ export default function ArtistScreen() {
                 onPress={() => setPressingModalVisible(false)}
                 disabled={savingPressing}
               >
-                <Text style={styles.cancelBtnText}>CANCELAR</Text>
+                <Text style={[styles.cancelBtnText, { color: palette.muted }]}>CANCELAR</Text>
               </Pressable>
 
               <Pressable
-                style={[styles.saveBtn, savingPressing && { opacity: 0.6 }]}
+                style={[styles.saveBtn, { backgroundColor: palette.accent }, savingPressing && { opacity: 0.6 }]}
                 onPress={savePressing}
                 disabled={savingPressing}
               >
                 {savingPressing ? (
-                  <ActivityIndicator color={colors.background} size="small" />
+                  <ActivityIndicator color={palette.background} size="small" />
                 ) : (
-                  <Text style={styles.saveBtnText}>ACUÑAR TIRADA</Text>
+                  <Text style={[styles.saveBtnText, { color: palette.background }]}>ACUÑAR EN CATÁLOGO</Text>
                 )}
               </Pressable>
             </View>
@@ -425,88 +706,112 @@ export default function ArtistScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.background
+    flex: 1
   },
   topBar: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-    backgroundColor: colors.backgroundElevated,
+    paddingBottom: 16,
+    borderBottomWidth: 1
+  },
+  topBarInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12
+    maxWidth: 720,
+    alignSelf: 'center',
+    width: '100%'
   },
-  headerInfo: { flex: 1 },
-  title: {
-    color: colors.text,
-    fontSize: 22,
+  headerInfo: {
+    flex: 1
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4
+  },
+  recIndicator: {
+    width: 6,
+    height: 6,
+    borderRadius: 3
+  },
+  badgeRowText: {
+    fontSize: 9,
     fontWeight: '900',
-    letterSpacing: -0.3
+    letterSpacing: 1
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.5
   },
   labelBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 4,
+    marginTop: 6,
     flexWrap: 'wrap'
   },
   selloLabel: {
-    color: colors.muted,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.5
   },
   selloName: {
-    color: colors.accent,
     fontSize: 12,
-    fontWeight: '700'
+    fontWeight: '800'
   },
   verifiedTag: {
-    backgroundColor: colors.successMuted,
     borderWidth: 1,
-    borderColor: colors.successBorder,
     paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingVertical: 2,
     borderRadius: 4
   },
   verifiedText: {
-    color: colors.success,
     fontSize: 9,
     fontWeight: '800'
   },
   pendingTag: {
-    backgroundColor: colors.warningMuted,
     borderWidth: 1,
-    borderColor: colors.warningBorder,
     paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingVertical: 2,
     borderRadius: 4
   },
   pendingText: {
-    color: colors.warning,
     fontSize: 9,
     fontWeight: '800'
   },
-  createBtn: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: 14,
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  themeBtn: {
+    borderWidth: 1,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 8
   },
-  createBtnText: {
-    color: colors.background,
+  themeBtnText: {
+    fontSize: 10,
     fontWeight: '900',
-    fontSize: 11,
+    letterSpacing: 0.5
+  },
+  createBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8
+  },
+  createBtnText: {
+    fontWeight: '900',
+    fontSize: 12,
     letterSpacing: 0.8
   },
   listContent: {
     padding: 16,
-    paddingBottom: 32,
-    maxWidth: 680,
+    paddingBottom: 36,
+    maxWidth: 720,
     width: '100%',
     alignSelf: 'center'
   },
@@ -517,177 +822,294 @@ const styles = StyleSheet.create({
     gap: 12
   },
   loadingText: {
-    color: colors.muted,
     fontSize: 13,
     fontWeight: '600'
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 18,
     marginBottom: 14,
-    borderWidth: 1,
-    borderColor: colors.border
+    borderWidth: 1
   },
-  cardTop: { flexDirection: 'row', alignItems: 'flex-start' },
+  cardTop: {
+    marginBottom: 14
+  },
+  trackMetaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
   trackTitle: {
-    color: colors.text,
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: -0.2
+    letterSpacing: -0.3,
+    flex: 1
+  },
+  licensePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1
+  },
+  licenseText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5
   },
   artistName: {
-    color: colors.muted,
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 4,
     fontWeight: '600'
   },
   desc: {
-    color: colors.textSecondary,
     fontSize: 13,
     marginTop: 8,
     lineHeight: 18
   },
+  audioUrlBox: {
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1
+  },
+  audioUrlLabel: {
+    fontSize: 9,
+    fontWeight: '800'
+  },
+  audioUrlText: {
+    fontSize: 11,
+    flex: 1
+  },
   actions: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 14,
-    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle
+    paddingTop: 12,
+    alignItems: 'center'
   },
   pressingBtn: {
     flex: 2,
-    backgroundColor: colors.accent,
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center'
   },
   pressingBtnText: {
-    color: colors.background,
     fontWeight: '900',
     fontSize: 11,
     letterSpacing: 0.5
   },
   editBtn: {
     flex: 1.5,
-    backgroundColor: colors.surfaceLight,
     borderWidth: 1,
-    borderColor: colors.border,
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center'
   },
   editBtnText: {
-    color: colors.textSecondary,
     fontWeight: '800',
-    fontSize: 11,
-    letterSpacing: 0.5
+    fontSize: 11
   },
   deleteBtn: {
-    backgroundColor: colors.dangerMuted,
     borderWidth: 1,
-    borderColor: colors.dangerBorder,
-    paddingHorizontal: 14,
     paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center'
   },
   deleteBtnText: {
-    color: colors.danger,
-    fontWeight: '900',
-    fontSize: 14
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
-    padding: 20
-  },
-  modalScroll: { flexGrow: 1, justifyContent: 'center' },
-  modalBox: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
-    maxWidth: 500,
-    width: '100%',
-    alignSelf: 'center'
-  },
-  modalBadge: {
-    color: colors.accent,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1,
-    marginBottom: 4
-  },
-  modalTitle: { color: colors.text, fontSize: 20, fontWeight: '900' },
-  modalTrackSub: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    marginTop: 4,
-    marginBottom: 16,
-    fontWeight: '600'
-  },
-  inputLabel: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginTop: 12,
-    marginBottom: 6
-  },
-  input: {
-    backgroundColor: colors.surfaceDark,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 20
-  },
-  cancelBtn: { padding: 12 },
-  cancelBtnText: {
-    color: colors.muted,
-    fontWeight: '800',
     fontSize: 12,
-    letterSpacing: 0.5
-  },
-  saveBtn: {
-    backgroundColor: colors.accent,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8
-  },
-  saveBtnText: {
-    color: colors.background,
-    fontWeight: '900',
-    fontSize: 12,
-    letterSpacing: 0.5
+    fontWeight: '900'
   },
   emptyContainer: {
     alignItems: 'center',
     paddingVertical: 60,
     paddingHorizontal: 24
   },
-  emptyIcon: { fontSize: 40, marginBottom: 12 },
-  emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '800' },
+  emptyIcon: {
+    fontSize: 40,
+    marginBottom: 12
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800'
+  },
   emptySub: {
-    color: colors.muted,
     textAlign: 'center',
     fontSize: 13,
     marginTop: 6,
     lineHeight: 18
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(5, 6, 10, 0.92)',
+    justifyContent: 'center',
+    padding: 20
+  },
+  modalScroll: {
+    flexGrow: 1,
+    justifyContent: 'center'
+  },
+  modalBox: {
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center'
+  },
+  modalBadge: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 4
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    marginBottom: 14
+  },
+  modalSubDesc: {
+    fontSize: 13,
+    marginBottom: 16
+  },
+  sourceSelectorRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14
+  },
+  sourceTab: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center'
+  },
+  sourceTabActive: {},
+  sourceTabText: {
+    fontSize: 11,
+    fontWeight: '800'
+  },
+  dropZone: {
+    borderRadius: 12,
+    padding: 18,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12
+  },
+  dropZoneIcon: {
+    fontSize: 32,
+    marginBottom: 6
+  },
+  dropZoneTitle: {
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  dropZoneSub: {
+    fontSize: 11,
+    marginTop: 4,
+    textAlign: 'center'
+  },
+  fileSelectedBox: {
+    alignItems: 'center',
+    marginVertical: 6
+  },
+  fileNameText: {
+    fontSize: 13,
+    fontWeight: '900'
+  },
+  fileSizeText: {
+    fontSize: 11,
+    marginTop: 2
+  },
+  uploadPickBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 10
+  },
+  uploadPickBtnText: {
+    fontWeight: '900',
+    fontSize: 11,
+    letterSpacing: 0.8
+  },
+  urlInputBox: {
+    marginBottom: 10
+  },
+  presetsList: {
+    gap: 6,
+    marginBottom: 10
+  },
+  presetCard: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1
+  },
+  presetName: {
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  presetDesc: {
+    fontSize: 10,
+    marginTop: 2
+  },
+  coverUploadRow: {
+    marginVertical: 10
+  },
+  coverPickBtn: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center'
+  },
+  coverPickText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5
+  },
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 6
+  },
+  input: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    marginBottom: 14
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+    marginTop: 8
+  },
+  cancelBtn: {
+    padding: 12
+  },
+  cancelBtnText: {
+    fontWeight: '800',
+    fontSize: 12
+  },
+  saveBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8
+  },
+  saveBtnText: {
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.8
   }
 });

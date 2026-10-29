@@ -1,3 +1,4 @@
+// Consultas y edición del catálogo musical.
 import { pool } from '../config/database.js';
 
 export async function listArtists(_req, res, next) {

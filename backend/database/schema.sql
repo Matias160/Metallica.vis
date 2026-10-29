@@ -76,7 +76,7 @@ CREATE TABLE copies (
   status ENUM('available', 'owned', 'transferred', 'archived', 'restored') NOT NULL DEFAULT 'available',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE (pressing_id, copy_number, generation),
+  UNIQUE (pressing_id, copy_number),
   FOREIGN KEY (pressing_id) REFERENCES pressings(id),
   FOREIGN KEY (current_owner_id) REFERENCES users(id),
   FOREIGN KEY (parent_copy_id) REFERENCES copies(id)

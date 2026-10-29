@@ -1,3 +1,4 @@
+// Verifica tokens y permisos antes de ejecutar rutas protegidas.
 import jwt from 'jsonwebtoken';
 
 export function requireAuth(req, res, next) {

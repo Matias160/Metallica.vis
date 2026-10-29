@@ -23,13 +23,14 @@
   - **Lectura (Read):** Catálogo de pistas, tiradas, colección personal, detalle de copias, linaje de custodia, listado de usuarios y métricas de auditoría.
 - **Manejo de Errores y UI:**
   - Respuestas JSON estructuradas con códigos semánticos (`code` y `message`).
-  - Alertas informativas nativas y mensajes de error amigables en todos los formularios.
+  - Mensajes de estado dentro de la interfaz, sin `alert` ni ventanas emergentes, y validación amigable en formularios.
+  - Modo día/noche persistente: se cambia desde **Mi Perfil** y se conserva al volver a abrir la aplicación.
 
 ### 2. Requisitos Técnicos de Frontend (React Native)
 - **Navegación:** `React Navigation` fluido con combinación de `NativeStackNavigator` (Auth) y `BottomTabNavigator` (Main) con pestañas dinámicas condicionales según el rol del usuario autenticado.
 - **Estado y Contexto:** `AuthContext` (Context API) centralizado para gestionar el usuario, token JWT, roles, inicio de sesión, registro, social login y refresco de permisos.
 - **Autenticación Persistente:** Persistencia mediante `@react-native-async-storage/async-storage` para que el usuario mantenga su sesión activa al cerrar y volver a abrir la app.
-- **Diseño Responsivo:** Paleta retro-oscura adaptable (`#09090b`, `#17171a`, `#d8ff3e`), animaciones fluidas con `Animated` y soporte para Web y Android.
+- **Diseño Responsivo:** Paleta retro adaptable con modos día/noche, animaciones fluidas con `Animated` y soporte para Web y Android.
 
 ### 3. Requisitos Técnicos de Backend
 - **Node.js + Express (ES Modules):** Arquitectura modular dividida en rutas, controladores, middlewares de autenticación/roles y utilidades.

@@ -1,3 +1,4 @@
+// Lógica de registro, acceso y recuperación de identidad.
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';

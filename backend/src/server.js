@@ -1,3 +1,4 @@
+// Inicia el servidor HTTP con la configuración declarada en el entorno.
 import 'dotenv/config';
 import app from './app.js';
 

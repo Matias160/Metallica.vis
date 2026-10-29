@@ -1,28 +1,43 @@
+// Formulario para crear una cuenta con selector interactivo de rol inicial.
 import { useState } from 'react';
-import { 
-  ActivityIndicator, 
-  Alert, 
-  KeyboardAvoidingView, 
-  Platform, 
-  Pressable, 
-  SafeAreaView, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  TextInput, 
-  View 
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { useFeedback } from '../../context/FeedbackContext';
 import { colors, shadows } from '../../theme/colors';
 
 const ROLES = [
-  { id: 'collector', label: 'Coleccionista', desc: 'Escucha, degrada cintas y las dubbea hacia otros contactos' },
-  { id: 'artist', label: 'Artista / Sello', desc: 'Sube música al máster y acuña tiradas físicas limitadas' },
-  { id: 'admin', label: 'Admin / Archivista', desc: 'Audita el sistema, modera sellos y administra permisos' },
+  {
+    id: 'collector',
+    label: 'Coleccionista',
+    desc: 'Escucha, degrada cintas físicas y las dubbea hacia otros contactos de la red.'
+  },
+  {
+    id: 'artist',
+    label: 'Artista / Sello',
+    desc: 'Sube música al máster y acuña tiradas físicas limitadas con cuota estricta.'
+  },
+  {
+    id: 'admin',
+    label: 'Archivista / Admin',
+    desc: 'Audita el sistema, modera sellos discográficos y administra permisos.'
+  }
 ];
 
 export default function RegisterScreen({ navigation }) {
   const { register } = useAuth();
+  const { notify } = useFeedback();
+
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -30,6 +45,7 @@ export default function RegisterScreen({ navigation }) {
   const [selectedRole, setSelectedRole] = useState('collector');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [focusedInput, setFocusedInput] = useState(null);
 
   async function handleRegister() {
     setErrorMsg('');
@@ -47,7 +63,7 @@ export default function RegisterScreen({ navigation }) {
       await register(username.trim(), email.trim(), password, displayName.trim(), selectedRole);
     } catch (err) {
       setErrorMsg(err.message || 'Error al registrar la cuenta');
-      Alert.alert('Registro fallido', err.message);
+      notify('No se pudo crear la cuenta', err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -55,15 +71,23 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.brandBox}>
-            <Text style={styles.logo}>metallica<Text style={styles.logoDot}>.vis</Text></Text>
-            <Text style={styles.title}>ALTA DE MIEMBRO</Text>
-            <Text style={styles.subtitle}>Unite a la red clandestina de coleccionismo y preservación musical analógica.</Text>
+            <View style={styles.badgeLabel}>
+              <View style={styles.liveDot} />
+              <Text style={styles.badgeLabelText}>CREDENCIAL ANALÓGICA</Text>
+            </View>
+            <Text style={styles.logo}>
+              metallica<Text style={styles.logoDot}>.vis</Text>
+            </Text>
+            <Text style={styles.title}>Alta de Miembro</Text>
+            <Text style={styles.subtitle}>
+              Unite a la red clandestina de coleccionismo, intercambio y preservación de másters musicales.
+            </Text>
           </View>
 
           {errorMsg ? (
@@ -73,55 +97,64 @@ export default function RegisterScreen({ navigation }) {
             </View>
           ) : null}
 
-          <View style={[styles.card, shadows.md]}>
+          <View style={[styles.card, shadows.lg]}>
             <View style={styles.inputGroup}>
               <Text style={styles.label}>NOMBRE COMPLETO O ARTÍSTICO</Text>
-              <TextInput 
+              <TextInput
                 placeholder="Ej: James Hetfield"
                 placeholderTextColor={colors.mutedDark}
-                style={styles.input}
+                style={[styles.input, focusedInput === 'displayName' && styles.inputFocused]}
                 value={displayName}
                 onChangeText={setDisplayName}
+                onFocus={() => setFocusedInput('displayName')}
+                onBlur={() => setFocusedInput(null)}
               />
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>NOMBRE DE USUARIO (HANDLE)</Text>
-              <TextInput 
+              <TextInput
                 placeholder="Ej: hetfield_riffs"
                 placeholderTextColor={colors.mutedDark}
                 autoCapitalize="none"
-                style={styles.input}
+                style={[styles.input, focusedInput === 'username' && styles.inputFocused]}
                 value={username}
                 onChangeText={setUsername}
+                onFocus={() => setFocusedInput('username')}
+                onBlur={() => setFocusedInput(null)}
               />
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
-              <TextInput 
+              <TextInput
                 placeholder="james@metallica.vis"
                 placeholderTextColor={colors.mutedDark}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                style={styles.input}
+                style={[styles.input, focusedInput === 'email' && styles.inputFocused]}
                 value={email}
                 onChangeText={setEmail}
+                onFocus={() => setFocusedInput('email')}
+                onBlur={() => setFocusedInput(null)}
               />
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>CONTRASEÑA (MÍNIMO 8 CARACTERES)</Text>
-              <TextInput 
+              <TextInput
                 placeholder="••••••••"
                 placeholderTextColor={colors.mutedDark}
                 secureTextEntry
-                style={styles.input}
+                style={[styles.input, focusedInput === 'password' && styles.inputFocused]}
                 value={password}
                 onChangeText={setPassword}
+                onFocus={() => setFocusedInput('password')}
+                onBlur={() => setFocusedInput(null)}
               />
             </View>
 
+            {/* Selector de Rol Inicial */}
             <View style={styles.roleSection}>
               <Text style={styles.label}>SELECCIONÁ TU ROL INICIAL:</Text>
               <View style={styles.roleContainer}>
@@ -152,13 +185,14 @@ export default function RegisterScreen({ navigation }) {
               </View>
             </View>
 
-            <Pressable 
+            {/* Botón de Enviar */}
+            <Pressable
               style={({ pressed }) => [
                 styles.button,
                 shadows.glowAccent,
                 pressed && styles.buttonPressed,
                 loading && styles.buttonDisabled
-              ]} 
+              ]}
               onPress={handleRegister}
               disabled={loading}
             >
@@ -169,12 +203,13 @@ export default function RegisterScreen({ navigation }) {
               )}
             </Pressable>
 
-            <Pressable 
-              style={styles.linkButton} 
+            <Pressable
+              style={styles.linkButton}
               onPress={() => navigation.navigate('Login')}
             >
               <Text style={styles.linkText}>
-                ¿Ya tenés credenciales? <Text style={styles.linkHighlight}>Iniciá sesión aquí</Text>
+                ¿Ya tenés credenciales?{' '}
+                <Text style={styles.linkHighlight}>Iniciá sesión aquí</Text>
               </Text>
             </Pressable>
           </View>
@@ -185,65 +220,107 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1 },
+  safe: {
+    flex: 1,
+    backgroundColor: colors.background
+  },
+  container: {
+    flex: 1
+  },
   scroll: {
     paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingVertical: 32,
     maxWidth: 520,
     width: '100%',
     alignSelf: 'center'
   },
   brandBox: {
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: 24
+  },
+  badgeLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.surfaceLight,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent
+  },
+  badgeLabelText: {
+    color: colors.textSecondary,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1
   },
   logo: {
     color: colors.text,
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: '900',
-    letterSpacing: -0.5
+    letterSpacing: -1
   },
-  logoDot: { color: colors.accent },
+  logoDot: {
+    color: colors.accent
+  },
   title: {
-    color: colors.textSecondary,
-    fontSize: 16,
+    color: colors.text,
+    fontSize: 22,
     fontWeight: '900',
-    letterSpacing: 1.5,
-    marginTop: 8
+    letterSpacing: -0.5,
+    marginTop: 6
   },
   subtitle: {
     color: colors.muted,
     fontSize: 13,
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 8,
     lineHeight: 18,
-    paddingHorizontal: 20
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: colors.border
+    maxWidth: 380
   },
   errorBox: {
     backgroundColor: colors.dangerMuted,
     borderColor: colors.dangerBorder,
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
-    marginBottom: 14,
+    marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8
   },
-  errorIcon: { color: colors.danger, fontSize: 16, fontWeight: '900' },
-  errorText: { color: '#fca5a5', fontSize: 13, fontWeight: '600', flex: 1 },
-  inputGroup: { marginBottom: 14 },
+  errorIcon: {
+    color: colors.danger,
+    fontSize: 16,
+    fontWeight: '900'
+  },
+  errorText: {
+    color: '#fca5a5',
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  inputGroup: {
+    marginBottom: 14
+  },
   label: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.8,
     marginBottom: 6
@@ -253,24 +330,36 @@ const styles = StyleSheet.create({
     color: colors.text,
     borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
+    paddingVertical: 13,
+    fontSize: 14,
     borderWidth: 1,
     borderColor: colors.border
   },
-  roleSection: { marginTop: 6, marginBottom: 8 },
-  roleContainer: { gap: 8 },
+  inputFocused: {
+    borderColor: colors.accent,
+    backgroundColor: '#0c0f17'
+  },
+  roleSection: {
+    marginTop: 6,
+    marginBottom: 18
+  },
+  roleContainer: {
+    gap: 8,
+    marginTop: 6
+  },
   roleCard: {
     backgroundColor: colors.surfaceDark,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: 10,
-    padding: 12
+    padding: 12,
+    borderWidth: 1,
+    borderColor: colors.border
   },
-  roleCardPressed: { backgroundColor: colors.surfaceHover },
   roleCardActive: {
     borderColor: colors.accent,
     backgroundColor: colors.accentMuted
+  },
+  roleCardPressed: {
+    backgroundColor: colors.surfaceHover
   },
   roleHeader: {
     flexDirection: 'row',
@@ -278,13 +367,13 @@ const styles = StyleSheet.create({
     gap: 10
   },
   radioOuter: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     borderWidth: 2,
-    borderColor: colors.muted,
-    justifyContent: 'center',
-    alignItems: 'center'
+    borderColor: colors.mutedDark,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   radioOuterActive: {
     borderColor: colors.accent
@@ -297,7 +386,7 @@ const styles = StyleSheet.create({
   },
   roleLabel: {
     color: colors.textSecondary,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800'
   },
   roleLabelActive: {
@@ -305,34 +394,42 @@ const styles = StyleSheet.create({
   },
   roleDesc: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 4,
-    marginLeft: 28,
-    lineHeight: 16
+    lineHeight: 15,
+    paddingLeft: 26
   },
   button: {
     backgroundColor: colors.accent,
-    paddingVertical: 14,
+    paddingVertical: 15,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 14
+    marginTop: 6
   },
   buttonPressed: {
     backgroundColor: colors.accentHover,
     transform: [{ scale: 0.99 }]
   },
-  buttonDisabled: { opacity: 0.6 },
+  buttonDisabled: {
+    opacity: 0.6
+  },
   buttonText: {
     color: colors.background,
     fontWeight: '900',
-    fontSize: 14,
-    letterSpacing: 1
+    fontSize: 13,
+    letterSpacing: 1.2
   },
   linkButton: {
     alignItems: 'center',
     marginTop: 18,
     paddingVertical: 4
   },
-  linkText: { color: colors.muted, fontSize: 13 },
-  linkHighlight: { color: colors.accent, fontWeight: '700' }
+  linkText: {
+    color: colors.muted,
+    fontSize: 12
+  },
+  linkHighlight: {
+    color: colors.accent,
+    fontWeight: '800'
+  }
 });

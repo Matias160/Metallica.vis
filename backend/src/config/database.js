@@ -1,3 +1,4 @@
+// Crea el pool de conexiones seguro para MySQL.
 import mysql from 'mysql2/promise';
 
 export const pool = mysql.createPool({

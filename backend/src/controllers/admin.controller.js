@@ -1,3 +1,4 @@
+// Operaciones administrativas para usuarios, roles y moderación.
 import { pool } from '../config/database.js';
 
 export async function listUsers(_req, res, next) {

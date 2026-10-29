@@ -1,0 +1,473 @@
+/* ==========================================================================
+   METALLICA.VIS — DESIGN SYSTEM & VISUAL STYLESHEET
+   Estética: Heavy Metal Tape Trading, Deep Titanium, Studio Amber Gold & Neon Cyan
+   Listo para compartir con IAs de diseño, v0, Claude, Figma o Tailwind.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. VARIABLES DE TEMA (CSS CUSTOM PROPERTIES)
+   -------------------------------------------------------------------------- */
+:root {
+  /* Modo Oscuro (Estudio Nocturno / Deep Obsidian) */
+  --bg-app: #090a0f;
+  --bg-elevated: #0f121a;
+  --bg-surface: #141824;
+  --bg-surface-light: #1c2233;
+  --bg-surface-hover: #252d42;
+  --bg-recessed: #0b0d14;
+  --bg-glass: rgba(20, 24, 36, 0.85);
+
+  /* Bordes Metálicos */
+  --border-main: #232b3e;
+  --border-subtle: #181e2b;
+  --border-active: #f59e0b;
+  --border-cyan: #00e5ff;
+
+  /* Tipografía */
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #7e8ea6;
+  --text-muted-dark: #4b556b;
+
+  /* Acentos Analógicos (Tape Amber & Neon Cyan) */
+  --accent-gold: #f59e0b;
+  --accent-gold-hover: #fbbf24;
+  --accent-gold-bright: #ffd166;
+  --accent-gold-muted: rgba(245, 158, 11, 0.12);
+  --accent-gold-border: rgba(245, 158, 11, 0.35);
+
+  --accent-cyan: #00e5ff;
+  --accent-cyan-hover: #38bdf8;
+  --accent-cyan-muted: rgba(0, 229, 255, 0.12);
+  --accent-cyan-border: rgba(0, 229, 255, 0.35);
+
+  /* Estados de Integridad / Desgaste de Cinta */
+  --status-mint: #10b981;
+  --status-mint-muted: rgba(16, 185, 129, 0.14);
+  --status-worn: #f59e0b;
+  --status-worn-muted: rgba(245, 158, 11, 0.14);
+  --status-critical: #ff3b5c;
+  --status-critical-muted: rgba(255, 59, 92, 0.15);
+
+  /* Sombras y Resplandores (Glows) */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.7);
+  --glow-gold: 0 0 20px rgba(245, 158, 11, 0.35);
+  --glow-cyan: 0 0 20px rgba(0, 229, 255, 0.35);
+  --glow-mint: 0 0 16px rgba(16, 185, 129, 0.3);
+}
+
+/* Modo Día (Estudio Diurno / Sala de Luz) */
+[data-theme="light"] {
+  --bg-app: #f1f5f9;
+  --bg-elevated: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-surface-light: #f8fafc;
+  --bg-surface-hover: #e2e8f0;
+  --bg-recessed: #edf2f7;
+  --bg-glass: rgba(255, 255, 255, 0.9);
+
+  --border-main: #cbd5e1;
+  --border-subtle: #e2e8f0;
+  --border-active: #d97706;
+  --border-cyan: #0284c7;
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-muted-dark: #94a3b8;
+
+  --accent-gold: #d97706;
+  --accent-gold-hover: #b45309;
+  --accent-gold-muted: rgba(217, 119, 6, 0.12);
+  --accent-gold-border: rgba(217, 119, 6, 0.35);
+}
+
+/* --------------------------------------------------------------------------
+   2. RESET & BASE
+   -------------------------------------------------------------------------- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --------------------------------------------------------------------------
+   3. TIPOGRAFÍA INDUSTRIAL & JERARQUÍAS
+   -------------------------------------------------------------------------- */
+.text-kicker {
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+}
+
+.text-title-hero {
+  font-size: 2.25rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.text-title-card {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.text-meta {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.text-hash {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--accent-cyan);
+}
+
+/* --------------------------------------------------------------------------
+   4. TARJETAS & CONTENEDORES DE ESTUDIO
+   -------------------------------------------------------------------------- */
+.card-studio {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-main);
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-studio:hover {
+  border-color: var(--border-active);
+  box-shadow: var(--shadow-md), var(--glow-gold);
+  transform: translateY(-2px);
+}
+
+.card-glass {
+  background-color: var(--bg-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-main);
+  border-radius: 18px;
+}
+
+/* --------------------------------------------------------------------------
+   5. BOTONES & CHIPS INTERACTIVOS
+   -------------------------------------------------------------------------- */
+.btn-primary {
+  background-color: var(--accent-gold);
+  color: #090a0f;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.8rem 1.4rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-gold-hover);
+  box-shadow: var(--glow-gold);
+  transform: scale(1.02);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background-color: var(--bg-surface-light);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-main);
+  padding: 0.75rem 1.2rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--text-muted);
+}
+
+.btn-danger {
+  background-color: var(--status-critical-muted);
+  color: var(--status-critical);
+  border: 1px solid rgba(255, 59, 92, 0.4);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.btn-danger:hover {
+  background-color: rgba(255, 59, 92, 0.25);
+}
+
+.chip-filter {
+  background-color: var(--bg-recessed);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.4rem 0.85rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chip-filter.active {
+  background-color: var(--accent-gold-muted);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+/* --------------------------------------------------------------------------
+   6. CARCASA DE CASETE & REPRODUCTOR ANALÓGICO
+   -------------------------------------------------------------------------- */
+.cassette-shell {
+  background-color: var(--bg-recessed);
+  border: 1px solid var(--border-main);
+  border-radius: 12px;
+  padding: 1.25rem;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.cassette-screw {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #323c52;
+  border: 1px solid #151924;
+}
+.cassette-screw.tl { top: 8px; left: 8px; }
+.cassette-screw.tr { top: 8px; right: 8px; }
+.cassette-screw.bl { bottom: 8px; left: 8px; }
+.cassette-screw.br { bottom: 8px; right: 8px; }
+
+.cassette-tape-window {
+  height: 52px;
+  background-color: #07080d;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  margin: 0.75rem 0;
+}
+
+.spool-wheel {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--bg-surface-light);
+  border: 2px solid var(--accent-gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.spool-wheel.spinning {
+  animation: spinReels 2s linear infinite;
+}
+
+@keyframes spinReels {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spool-hub {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #090a0f;
+}
+
+/* --------------------------------------------------------------------------
+   7. VITRINA DIGITAL / ESTANTERÍA 3D
+   -------------------------------------------------------------------------- */
+.shelf-rack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  padding: 1.5rem 0;
+  position: relative;
+}
+
+.shelf-beam {
+  width: 100%;
+  height: 14px;
+  background: linear-gradient(180deg, #2a3449 0%, #151a26 100%);
+  border: 1px solid var(--border-main);
+  border-radius: 4px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+  margin-top: 0.5rem;
+}
+
+.shelf-spine {
+  width: 90px;
+  height: 130px;
+  background-color: var(--bg-surface);
+  border: 1.5px solid var(--border-main);
+  border-radius: 8px;
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.shelf-spine:hover {
+  transform: translateY(-8px) scale(1.04);
+  border-color: var(--accent-gold);
+  box-shadow: var(--shadow-md), var(--glow-gold);
+}
+
+.shelf-spine.gold-edition {
+  border-color: var(--accent-gold);
+  background: linear-gradient(135deg, #1e1706 0%, #10141f 100%);
+}
+
+/* --------------------------------------------------------------------------
+   8. VINILO & DISCO CON SURCOS
+   -------------------------------------------------------------------------- */
+.vinyl-disc {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #0a0d14 30%, #161b26 70%, #0a0d14 100%);
+  border: 4px solid #1a2233;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: var(--shadow-lg);
+}
+
+.vinyl-grooves {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.vinyl-center-label {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  background-color: var(--accent-gold);
+  color: #090a0f;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+/* --------------------------------------------------------------------------
+   9. VÚMETRO ANALÓGICO (+3 dB)
+   -------------------------------------------------------------------------- */
+.vu-meter-rack {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  height: 8px;
+  width: 100%;
+}
+
+.vu-segment {
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+}
+.vu-segment.green { background-color: var(--status-mint); }
+.vu-segment.yellow { background-color: var(--status-worn); }
+.vu-segment.red { background-color: var(--status-critical); }
+
+/* --------------------------------------------------------------------------
+   10. ESCÁNER QR & RAYO LÁSER ANIMADO
+   -------------------------------------------------------------------------- */
+.qr-viewfinder {
+  width: 100%;
+  height: 190px;
+  background-color: var(--bg-recessed);
+  border: 1.5px solid var(--accent-cyan);
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-laser-beam {
+  position: absolute;
+  left: 10%;
+  width: 80%;
+  height: 2px;
+  background-color: var(--accent-cyan);
+  box-shadow: 0 0 10px var(--accent-cyan);
+  animation: laserSweep 2s ease-in-out infinite alternate;
+}
+
+@keyframes laserSweep {
+  0% { top: 15%; opacity: 0.6; }
+  100% { top: 85%; opacity: 1; }
+}
+
+.qr-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-color: var(--accent-cyan);
+}
+.qr-corner.tl { top: 8px; left: 8px; border-top: 3px solid; border-left: 3px solid; }
+.qr-corner.tr { top: 8px; right: 8px; border-top: 3px solid; border-right: 3px solid; }
+.qr-corner.bl { bottom: 8px; left: 8px; border-bottom: 3px solid; border-left: 3px solid; }
+.qr-corner.br { bottom: 8px; right: 8px; border-bottom: 3px solid; border-right: 3px solid; }
+
+/* --------------------------------------------------------------------------
+   11. DROPZONE DE SUBIDA DE ARCHIVOS DE AUDIO
+   -------------------------------------------------------------------------- */
+.dropzone-audio {
+  border: 2px dashed var(--accent-gold);
+  background-color: var(--bg-recessed);
+  border-radius: 14px;
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropzone-audio:hover {
+  background-color: var(--accent-gold-muted);
+  border-color: var(--accent-gold-bright);
+}

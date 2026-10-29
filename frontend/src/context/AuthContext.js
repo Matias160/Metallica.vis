@@ -1,6 +1,7 @@
+// Estado global de autenticación y datos del usuario activo.
 import { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiRequest } from '../api/client';
+import { apiRequest, setTokenUpdateListener } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -16,6 +17,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setTokenUpdateListener((newToken) => {
+      setToken(newToken);
+      if (!newToken) setUser(null);
+    });
+
     (async () => {
       try {
         const saved = await sessionStorage.get('metallica_session');

@@ -1,3 +1,4 @@
+// Gestiona las copias físicas, su estado y sus transferencias.
 import { pool } from '../config/database.js';
 
 const copySelect = `SELECT c.*, p.track_id, t.title AS track_title, t.audio_url, t.cover_url,
