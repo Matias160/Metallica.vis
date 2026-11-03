@@ -31,7 +31,8 @@ export async function register(req, res, next) {
       return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Completá todos los campos y usá una contraseña de al menos 8 caracteres' } });
     }
 
-    const assignedRole = ['collector', 'artist', 'admin'].includes(role) ? role : 'collector';
+    // Solo permitir roles normales de registro público; 'admin' requiere asignación explícita por otro admin
+    const assignedRole = role === 'artist' ? 'artist' : 'collector';
     const passwordHash = await bcrypt.hash(password, 12);
     const connection = await pool.getConnection();
     try {

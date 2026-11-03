@@ -2,6 +2,24 @@
 
 > Aplicación académica full-stack desarrollada en **React Native (Expo)** y **Node.js (Express) con MySQL/MariaDB**, inspirada en la cultura del *tape trading* clandestino.
 
+[![Descargar APK](https://img.shields.io/badge/Android-Descargar%20APK-brightgreen?logo=android&logoColor=white&style=for-the-badge)](https://github.com/Matias160/Metallica.vis/releases/latest)
+[![Build EAS](https://img.shields.io/badge/Expo%20EAS-Build%20Status-blue?logo=expo&logoColor=white&style=for-the-badge)](https://expo.dev/accounts/matusalen/projects/metallica-vis/builds)
+
+---
+
+## 📱 Descarga e Instalación del APK Oficial (Android)
+
+El archivo instalador para teléfonos móviles Android está disponible para descarga directa:
+
+* 📥 **[Descargar último APK publicado en GitHub Releases](https://github.com/Matias160/Metallica.vis/releases/latest)**
+* 📦 **[Carpeta de Distribución Local en el Repositorio (`/release`)](./release/README.md)**
+* 🌐 **[Historial y artefactos compilados en Expo EAS](https://expo.dev/accounts/matusalen/projects/metallica-vis/builds)**
+
+### Pasos rápidos para instalar en tu celular:
+1. Descarga el archivo `metallica-vis.apk` desde el enlace de Releases o desde el panel de EAS.
+2. Abre el archivo en tu dispositivo Android y confirma la instalación (habilitando *"Instalar fuentes desconocidas"* si el sistema te lo solicita).
+3. Abre **metallica.vis** para acceder a tu catálogo, vitrina 3D, reproductor de cinta y modo museo.
+
 ---
 
 ## 🎯 Cumplimiento de Consignas del Proyecto

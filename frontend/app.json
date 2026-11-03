@@ -5,7 +5,23 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
-    "splash": { "resizeMode": "contain", "backgroundColor": "#09090b" },
-    "android": { "package": "com.metallicavis.app" }
+    "android": {
+      "package": "com.metallicavis.app"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ffd446d7-890d-4067-9cf7-fa5ba8136650"
+      }
+    },
+    "plugins": [
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#09090b",
+          "resizeMode": "contain"
+        }
+      ]
+    ]
   }
 }

@@ -5,15 +5,22 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { pool } from '../config/database.js';
+import { requireAuth } from '../middlewares/auth.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, '../../public/uploads');
 
+// Extensiones seguras permitidas (audios e imágenes)
+const ALLOWED_EXTENSIONS = new Set([
+  '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac',
+  '.jpg', '.jpeg', '.png', '.webp'
+]);
+
 const router = Router();
 
-// POST /api/upload - Subida directa de archivos de audio / imágenes en base64
-router.post('/upload', async (req, res, next) => {
+// POST /api/upload - Subida directa de archivos de audio / imágenes en base64 (requiere usuario autenticado)
+router.post('/upload', requireAuth, async (req, res, next) => {
   try {
     const { filename, base64, mimeType } = req.body;
 
@@ -23,14 +30,26 @@ router.post('/upload', async (req, res, next) => {
       });
     }
 
+    // Sanitizar y validar extensión contra whitelist estricta
+    const ext = path.extname(filename).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_FILE_TYPE', message: 'Tipo de archivo no permitido. Solo se aceptan formatos de audio (mp3, wav, flac, ogg, m4a, aac) e imagen (jpg, png, webp).' }
+      });
+    }
+
     // Limpiar prefijo data URL si existe
     const cleanBase64 = base64.replace(/^data:[^;]+;base64,/, '');
     const buffer = Buffer.from(cleanBase64, 'base64');
 
-    // Sanitizar nombre de archivo
-    const ext = path.extname(filename).toLowerCase() || '.mp3';
+    // Asegurar existencia del directorio de subidas
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    // Nombre único no colisionable y seguro
     const safeBase = path.basename(filename, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
-    const uniqueName = `${Date.now()}_${safeBase}${ext}`;
+    const uniqueName = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}_${safeBase}${ext}`;
     const targetPath = path.join(uploadsDir, uniqueName);
 
     await fs.promises.writeFile(targetPath, buffer);
@@ -44,7 +63,7 @@ router.post('/upload', async (req, res, next) => {
       filename: uniqueName,
       url: fileUrl,
       sizeBytes: buffer.length,
-      mimeType: mimeType || 'audio/mpeg'
+      mimeType: mimeType || (ext.startsWith('.jp') || ext === '.png' || ext === '.webp' ? 'image/jpeg' : 'audio/mpeg')
     });
   } catch (error) {
     next(error);

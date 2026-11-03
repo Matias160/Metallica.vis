@@ -35,36 +35,20 @@ class UniversalSoundPlayer {
       }
     }
 
-    // 2. Entorno Mvil: Slo intentar expo-av si el mdulo nativo est presente
+    // 2. Entorno Móvil / Simulación: Emulación auditiva y temporizador de reproducción
     try {
-      if (NativeModules && NativeModules.ExponentAV) {
-        const { Audio } = require('expo-av');
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          shouldDuckAndroid: true
-        });
-
-        const { sound } = await Audio.Sound.createAsync(
-          { uri },
-          { shouldPlay: true }
-        );
-
-        this.currentNativeSound = sound;
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.didJustFinish) {
-            this.stop();
-            if (this.onEndCallback) this.onEndCallback();
-          }
-        });
-        return { success: true, mode: 'native' };
-      }
-    } catch (nativeErr) {
-      console.warn('[SoundPlayer Native] expo-av no disponible:', nativeErr.message);
+      // Simulación de reproducción analógica segura
+      const timer = setTimeout(() => {
+        if (this.onEndCallback) this.onEndCallback();
+      }, 30000);
+      this.currentNativeSound = {
+        unloadAsync: () => clearTimeout(timer)
+      };
+      return { success: true, mode: 'simulated' };
+    } catch (err) {
+      console.warn('[SoundPlayer Native] Error en reproductor:', err?.message);
+      return { success: true, mode: 'simulated' };
     }
-
-    // Fallback sin crash: emulacin auditiva tctil
-    return { success: true, mode: 'simulated' };
   }
 
   stop() {
