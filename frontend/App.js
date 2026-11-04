@@ -1,9 +1,10 @@
 // Punto de entrada: combina navegación, sesión, tema, capas 3D y mensajes no intrusivos.
-import { Platform } from 'react-native';
+import { Platform, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { FeedbackProvider } from './src/context/FeedbackContext';
-import { ThemeProvider } from './src/context/ThemeContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { AuthStack, MainStack } from './src/navigation/AppNavigator';
 
 // Inyección de estilos 3D y texturas analógicas en Web
@@ -16,6 +17,22 @@ if (Platform.OS === 'web') {
   }
 }
 
+function ThemedApp() {
+  const { isDark } = useTheme();
+  return (
+    <>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
+      <NavigationContainer>
+        <RootNavigator />
+      </NavigationContainer>
+    </>
+  );
+}
+
 function RootNavigator() {
   const { user, loading } = useAuth();
   if (loading) return null;
@@ -24,14 +41,14 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <FeedbackProvider>
-        <AuthProvider>
-          <NavigationContainer>
-            <RootNavigator />
-          </NavigationContainer>
-        </AuthProvider>
-      </FeedbackProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <FeedbackProvider>
+          <AuthProvider>
+            <ThemedApp />
+          </AuthProvider>
+        </FeedbackProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

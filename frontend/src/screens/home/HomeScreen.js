@@ -5,12 +5,12 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
@@ -106,40 +106,43 @@ export default function HomeScreen({ navigation }) {
         ]}
       >
         <View style={styles.topBarInner}>
-          <View style={styles.titleCol}>
+          <View style={styles.topMetaRow}>
             <View style={styles.badgeRow}>
               <View style={[styles.liveIndicator, { backgroundColor: palette.accent }]} />
               <Text style={[styles.badgeRowText, { color: palette.muted }]}>
-                TAPE TRADING ARCHIVE · CATÁLOGO ANALÓGICO
+                TAPE TRADING ARCHIVE · CATÁLOGO
               </Text>
             </View>
+
+            <View style={styles.headerRightActions}>
+              <Pressable
+                style={[styles.qrScanBtn, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}
+                onPress={() => setScannerVisible(true)}
+              >
+                <Text style={[styles.qrScanBtnText, { color: palette.cyan }]}>⛶ QR</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.themeBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
+                onPress={toggleTheme}
+              >
+                <Text style={[styles.themeBtnText, { color: palette.text }]}>
+                  {isDark ? '☀ DÍA' : '◐ NOCHE'}
+                </Text>
+              </Pressable>
+
+              <View style={[styles.badgeCount, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}>
+                <Text style={[styles.badgeCountNumber, { color: palette.accent }]}>{tracks.length}</Text>
+                <Text style={[styles.badgeCountLabel, { color: palette.muted }]}>MÁSTERS</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.titleCol}>
             <Text style={[styles.title, { color: palette.text }]}>Catálogo de Tiradas</Text>
             <Text style={[styles.subtitle, { color: palette.muted }]}>
               Cintas máster físicas en tiradas estrictamente limitadas y numeradas.
             </Text>
-          </View>
-
-          <View style={styles.headerRightActions}>
-            <Pressable
-              style={[styles.qrScanBtn, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}
-              onPress={() => setScannerVisible(true)}
-            >
-              <Text style={[styles.qrScanBtnText, { color: palette.cyan }]}>⛶ ESCANEAR QR</Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.themeBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
-              onPress={toggleTheme}
-            >
-              <Text style={[styles.themeBtnText, { color: palette.text }]}>
-                {isDark ? '☀ DÍA' : '◐ NOCHE'}
-              </Text>
-            </Pressable>
-
-            <View style={[styles.badgeCount, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}>
-              <Text style={[styles.badgeCountNumber, { color: palette.accent }]}>{tracks.length}</Text>
-              <Text style={[styles.badgeCountLabel, { color: palette.muted }]}>MÁSTERS</Text>
-            </View>
           </View>
         </View>
 
@@ -374,21 +377,24 @@ const styles = StyleSheet.create({
     flex: 1
   },
   topBar: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
     borderBottomWidth: 1
   },
   topBarInner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
     maxWidth: 720,
     alignSelf: 'center',
     width: '100%'
   },
+  topMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8
+  },
   titleCol: {
-    flex: 1
+    width: '100%'
   },
   badgeRow: {
     flexDirection: 'row',

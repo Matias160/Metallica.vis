@@ -4,16 +4,17 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -21,7 +22,7 @@ import { colors, shadows } from '../../theme/colors';
 
 const AVATAR_PRESETS = [
   { id: 'cassette', name: 'Cassette Cromo', uri: 'https://images.unsplash.com/photo-1542208998-f6dbbb27a72f?w=180&auto=format&fit=crop&q=80' },
-  { id: 'vinyl', name: 'Vinilo Master', uri: 'https://images.unsplash.com/photo-1539185441755-769473a23570?w=180&auto=format&fit=crop&q=80' },
+  { id: 'vinyl', name: 'Vinilo Master', uri: 'https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=180&auto=format&fit=crop&q=80' },
   { id: 'amp', name: 'Amplificador', uri: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=180&auto=format&fit=crop&q=80' },
   { id: 'stage', name: 'Escenario Live', uri: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=180&auto=format&fit=crop&q=80' },
   { id: 'reel', name: 'Carrete Reel', uri: 'https://images.unsplash.com/photo-1520523839898-507125cd53c1?w=180&auto=format&fit=crop&q=80' }
@@ -351,14 +352,6 @@ export default function ProfileScreen() {
 
               <View style={styles.modalBtnRow}>
                 <Pressable
-                  style={[styles.modalCancelBtn, { borderColor: palette.border }]}
-                  onPress={() => setIsEditing(false)}
-                  disabled={saving}
-                >
-                  <Text style={[styles.modalCancelText, { color: palette.textSecondary }]}>CANCELAR</Text>
-                </Pressable>
-
-                <Pressable
                   style={[styles.modalConfirmBtn, { backgroundColor: palette.accent }, saving && { opacity: 0.6 }]}
                   onPress={handleSaveProfile}
                   disabled={saving}
@@ -368,6 +361,14 @@ export default function ProfileScreen() {
                   ) : (
                     <Text style={[styles.modalConfirmText, { color: palette.background }]}>GUARDAR CAMBIOS</Text>
                   )}
+                </Pressable>
+
+                <Pressable
+                  style={[styles.modalCancelBtn, { borderColor: palette.border }]}
+                  onPress={() => setIsEditing(false)}
+                  disabled={saving}
+                >
+                  <Text style={[styles.modalCancelText, { color: palette.textSecondary }]}>CANCELAR</Text>
                 </Pressable>
               </View>
             </View>
@@ -632,23 +633,23 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20
+    padding: 12
   },
   modalCard: {
     width: '100%',
-    maxWidth: 420,
+    maxWidth: 400,
     borderRadius: 16,
-    padding: 24,
+    padding: 20,
     borderWidth: 1
   },
   modalCardLarge: {
     width: '100%',
-    maxWidth: 500,
+    maxWidth: 440,
     borderRadius: 16,
-    padding: 24,
+    padding: 18,
     borderWidth: 1,
     alignSelf: 'center'
   },
@@ -663,12 +664,12 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   modalBtnRow: {
-    flexDirection: 'row',
-    gap: 12,
+    flexDirection: 'column',
+    gap: 8,
     marginTop: 18
   },
   modalCancelBtn: {
-    flex: 1,
+    width: '100%',
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
@@ -679,8 +680,8 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   modalConfirmBtn: {
-    flex: 1,
-    paddingVertical: 12,
+    width: '100%',
+    paddingVertical: 13,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center'

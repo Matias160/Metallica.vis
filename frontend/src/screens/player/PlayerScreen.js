@@ -1,6 +1,7 @@
 // Reproductor visual analógico: deck de cintas y tocadiscos con estética de estudio.
 import { useState } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, shadows } from '../../theme/colors';
 
 export default function PlayerScreen() {

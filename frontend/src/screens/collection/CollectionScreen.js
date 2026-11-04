@@ -7,13 +7,13 @@ import {
   Modal,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { soundPlayer } from '../../utils/soundPlayer';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
@@ -206,36 +206,39 @@ export default function CollectionScreen() {
         ]}
       >
         <View style={styles.topBarInner}>
-          <View style={styles.titleCol}>
+          <View style={styles.topMetaRow}>
             <View style={styles.badgeRow}>
               <View style={[styles.deckPulse, { backgroundColor: palette.accent }]} />
               <Text style={[styles.badgeRowText, { color: palette.muted }]}>
                 VITRINA ANALÓGICA & TAPE DECK
               </Text>
             </View>
+
+            {/* Acciones de Cabecera: Escáner QR y Tema */}
+            <View style={styles.headerActions}>
+              <Pressable
+                style={[styles.qrScanBtn, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}
+                onPress={() => setScannerVisible(true)}
+              >
+                <Text style={[styles.qrScanBtnText, { color: palette.cyan }]}>⛶ QR</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.themeToggleBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
+                onPress={toggleTheme}
+              >
+                <Text style={[styles.themeToggleText, { color: palette.text }]}>
+                  {isDark ? '☀ DÍA' : '◐ NOCHE'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.titleCol}>
             <Text style={[styles.title, { color: palette.text }]}>Mi Colección</Text>
             <Text style={[styles.subtitle, { color: palette.muted }]}>
               Estantería de casetes y vinilos físicos con desgaste real y validación QR.
             </Text>
-          </View>
-
-          {/* Acciones de Cabecera: Escáner QR y Tema */}
-          <View style={styles.headerActions}>
-            <Pressable
-              style={[styles.qrScanBtn, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}
-              onPress={() => setScannerVisible(true)}
-            >
-              <Text style={[styles.qrScanBtnText, { color: palette.cyan }]}>⛶ ESCANEAR QR</Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.themeToggleBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
-              onPress={toggleTheme}
-            >
-              <Text style={[styles.themeToggleText, { color: palette.text }]}>
-                {isDark ? '☀ DÍA' : '◐ NOCHE'}
-              </Text>
-            </Pressable>
           </View>
         </View>
 
@@ -892,21 +895,24 @@ const styles = StyleSheet.create({
     flex: 1
   },
   topBar: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 14,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 12,
     borderBottomWidth: 1
   },
   topBarInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     maxWidth: 720,
     alignSelf: 'center',
     width: '100%'
   },
+  topMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8
+  },
   titleCol: {
-    flex: 1
+    width: '100%'
   },
   badgeRow: {
     flexDirection: 'row',

@@ -48,18 +48,21 @@ export function MainStack() {
       screenOptions={{
         headerShown: false, // Desactivar header nativo redundante: cada pantalla tiene su top bar de estudio
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: '800',
-          letterSpacing: 0.5,
+          letterSpacing: 0.2,
           marginTop: -2
+        },
+        tabBarItemStyle: {
+          paddingHorizontal: 1
         },
         tabBarStyle: {
           backgroundColor: palette.surface,
           borderTopWidth: 1,
           borderTopColor: palette.border,
-          minHeight: 64,
-          paddingBottom: 8,
-          paddingTop: 6,
+          minHeight: 58,
+          paddingBottom: 6,
+          paddingTop: 4,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -4 },
           shadowOpacity: 0.35,
@@ -84,7 +87,7 @@ export function MainStack() {
         name="Colección"
         component={CollectionScreen}
         options={{
-          tabBarLabel: 'Vitrina 3D',
+          tabBarLabel: 'Cintas',
           tabBarIcon: ({ focused, color }) => (
             <TabIcon symbol="📼" focused={focused} color={color} />
           )
@@ -95,7 +98,7 @@ export function MainStack() {
         name="Museo"
         component={MuseumScreen}
         options={{
-          tabBarLabel: 'Modo Museo',
+          tabBarLabel: 'Museo',
           tabBarIcon: ({ focused, color }) => (
             <TabIcon symbol="🏛️" focused={focused} color={color} />
           )
@@ -122,7 +125,7 @@ export function MainStack() {
           name="Admin"
           component={AdminScreen}
           options={{
-            tabBarLabel: 'Auditoría',
+            tabBarLabel: 'Admin',
             tabBarIcon: ({ focused, color }) => (
               <TabIcon symbol="⚙" focused={focused} color={color} />
             )
@@ -134,7 +137,7 @@ export function MainStack() {
         name="Perfil"
         component={ProfileScreen}
         options={{
-          tabBarLabel: 'Pasaporte',
+          tabBarLabel: 'Perfil',
           tabBarIcon: ({ focused, color }) => (
             <TabIcon symbol="●" focused={focused} color={color} />
           )
