@@ -2,12 +2,15 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Platform,
   Pressable,
   RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View
 } from 'react-native';
 import { apiRequest } from '../../api/client';
@@ -25,6 +28,7 @@ export default function AdminScreen() {
   const [artists, setArtists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
 
   async function loadAdminData() {
     try {
@@ -58,6 +62,29 @@ export default function AdminScreen() {
       await loadAdminData();
     } catch (err) {
       notify('No se pudo verificar el sello', err.message, 'error');
+    }
+  }
+
+  function confirmToggleStatus(u) {
+    const isBanning = u.is_active;
+    const title = isBanning ? 'Banear / Suspender Usuario' : 'Reactivar Usuario';
+    const message = isBanning
+      ? `¿Confirmás que querés suspender a @${u.username}? Se revocarán todas sus sesiones de inmediato.`
+      : `¿Deseás reactivar la cuenta de @${u.username}?`;
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(message)) {
+        handleToggleStatus(u);
+      }
+    } else {
+      Alert.alert(title, message, [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: isBanning ? 'Banear' : 'Activar',
+          style: isBanning ? 'destructive' : 'default',
+          onPress: () => handleToggleStatus(u)
+        }
+      ]);
     }
   }
 
@@ -212,7 +239,35 @@ export default function AdminScreen() {
               </Text>
             </View>
 
-            {users.map((u) => (
+            {/* Buscador de Usuarios */}
+            <View style={[styles.searchBox, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <Text style={{ fontSize: 13, marginRight: 8, color: palette.muted }}>🔍</Text>
+              <TextInput
+                placeholder="Buscar por usuario, email o rol..."
+                placeholderTextColor={palette.muted}
+                style={[styles.searchInput, { color: palette.text }]}
+                value={userSearch}
+                onChangeText={setUserSearch}
+              />
+              {userSearch ? (
+                <Pressable onPress={() => setUserSearch('')}>
+                  <Text style={{ color: palette.muted, paddingHorizontal: 6 }}>✕</Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            {users
+              .filter((u) => {
+                if (!userSearch.trim()) return true;
+                const q = userSearch.toLowerCase();
+                return (
+                  u.username?.toLowerCase().includes(q) ||
+                  u.email?.toLowerCase().includes(q) ||
+                  u.display_name?.toLowerCase().includes(q) ||
+                  (u.roles || []).some((r) => r.toLowerCase().includes(q))
+                );
+              })
+              .map((u) => (
               <View key={u.id} style={[styles.userCard, { backgroundColor: palette.surface, borderColor: palette.border }, shadows.sm]}>
                 <View style={styles.userTop}>
                   <View style={[styles.avatarMini, { backgroundColor: palette.surfaceDark, borderColor: palette.border }]}>
@@ -230,14 +285,14 @@ export default function AdminScreen() {
                   </View>
 
                   <Pressable
-                    style={[
+                    style={({ pressed }) => [
                       styles.statusBadge,
                       u.is_active
                         ? { backgroundColor: palette.successMuted, borderColor: palette.successBorder }
                         : { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder },
                       pressed && { opacity: 0.8 }
                     ]}
-                    onPress={() => handleToggleStatus(u)}
+                    onPress={() => confirmToggleStatus(u)}
                   >
                     <Text
                       style={[
@@ -521,5 +576,19 @@ const styles = StyleSheet.create({
   roleBtnText: {
     fontSize: 11,
     fontWeight: '700'
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 14
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    padding: 0
   }
 });

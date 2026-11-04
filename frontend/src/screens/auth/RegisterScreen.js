@@ -47,20 +47,35 @@ export default function RegisterScreen({ navigation }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [focusedInput, setFocusedInput] = useState(null);
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isEmailValid = email.trim() === '' || emailRegex.test(email.trim());
+  const isPasswordLong = password.length >= 8;
+  const hasLetterAndNumber = /(?=.*[a-zA-Z])(?=.*\d)/.test(password);
+  const isPasswordSecure = isPasswordLong && hasLetterAndNumber;
+
   async function handleRegister() {
     setErrorMsg('');
     if (!displayName.trim() || !username.trim() || !email.trim() || !password) {
       setErrorMsg('Por favor completá todos los campos requeridos.');
       return;
     }
-    if (password.length < 8) {
-      setErrorMsg('La contraseña debe tener al menos 8 caracteres.');
+    if (!emailRegex.test(email.trim())) {
+      setErrorMsg('El formato del correo electrónico no es válido.');
+      return;
+    }
+    if (!isPasswordSecure) {
+      setErrorMsg('La contraseña debe tener al menos 8 caracteres y combinar letras y números.');
+      return;
+    }
+    const cleanUsername = username.trim().toLowerCase().replace(/[^a-zA-Z0-9_]/g, '');
+    if (cleanUsername.length < 3) {
+      setErrorMsg('El nombre de usuario debe tener al menos 3 caracteres alfanuméricos.');
       return;
     }
 
     try {
       setLoading(true);
-      await register(username.trim(), email.trim(), password, displayName.trim(), selectedRole);
+      await register(cleanUsername, email.trim().toLowerCase(), password, displayName.trim(), selectedRole);
     } catch (err) {
       setErrorMsg(err.message || 'Error al registrar la cuenta');
       notify('No se pudo crear la cuenta', err.message, 'error');
@@ -132,26 +147,53 @@ export default function RegisterScreen({ navigation }) {
                 placeholderTextColor={colors.mutedDark}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                style={[styles.input, focusedInput === 'email' && styles.inputFocused]}
+                style={[
+                  styles.input,
+                  focusedInput === 'email' && styles.inputFocused,
+                  email.trim() !== '' && !isEmailValid && styles.inputError
+                ]}
                 value={email}
                 onChangeText={setEmail}
                 onFocus={() => setFocusedInput('email')}
                 onBlur={() => setFocusedInput(null)}
               />
+              {email.trim() !== '' && !isEmailValid ? (
+                <Text style={styles.validationErrorText}>
+                  ⚠ Formato de correo inválido (ej: usuario@correo.com)
+                </Text>
+              ) : null}
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>CONTRASEÑA (MÍNIMO 8 CARACTERES)</Text>
+              <Text style={styles.label}>CONTRASEÑA SEGURA</Text>
               <TextInput
                 placeholder="••••••••"
                 placeholderTextColor={colors.mutedDark}
                 secureTextEntry
-                style={[styles.input, focusedInput === 'password' && styles.inputFocused]}
+                style={[
+                  styles.input,
+                  focusedInput === 'password' && styles.inputFocused,
+                  password !== '' && !isPasswordSecure && styles.inputError,
+                  password !== '' && isPasswordSecure && styles.inputSuccess
+                ]}
                 value={password}
                 onChangeText={setPassword}
                 onFocus={() => setFocusedInput('password')}
                 onBlur={() => setFocusedInput(null)}
               />
+              {password === '' ? (
+                <Text style={styles.validationHintText}>
+                  Mínimo 8 caracteres, combinando letras y números.
+                </Text>
+              ) : !isPasswordSecure ? (
+                <Text style={styles.validationErrorText}>
+                  ⚠ La contraseña debe tener al menos 8 caracteres y combinar letras y números.
+                </Text>
+              ) : (
+                <Text style={styles.validationSuccessText}>
+                  ✓ Contraseña segura y lista para cifrado
+                </Text>
+              )}
             </View>
 
             {/* Selector de Rol Inicial */}
@@ -338,6 +380,32 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: colors.accent,
     backgroundColor: '#0c0f17'
+  },
+  inputError: {
+    borderColor: colors.danger,
+    backgroundColor: 'rgba(239, 68, 68, 0.05)'
+  },
+  inputSuccess: {
+    borderColor: colors.success,
+    backgroundColor: 'rgba(16, 185, 129, 0.05)'
+  },
+  validationErrorText: {
+    color: '#ef4444',
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 5,
+    letterSpacing: 0.2
+  },
+  validationHintText: {
+    color: colors.mutedDark,
+    fontSize: 11,
+    marginTop: 5
+  },
+  validationSuccessText: {
+    color: colors.success,
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 5
   },
   roleSection: {
     marginTop: 6,

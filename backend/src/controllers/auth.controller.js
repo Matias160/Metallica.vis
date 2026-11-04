@@ -7,7 +7,7 @@ import { createAccessToken, createRefreshToken } from '../utils/tokens.js';
 
 async function getUserWithRoles(userId) {
   const [users] = await pool.query(
-    'SELECT id, username, email, display_name FROM users WHERE id = ?',
+    'SELECT id, username, email, display_name, avatar_url FROM users WHERE id = ?',
     [userId]
   );
   const user = users[0];
@@ -27,8 +27,38 @@ async function getUserWithRoles(userId) {
 export async function register(req, res, next) {
   try {
     const { username, email, password, displayName, role = 'collector' } = req.body;
-    if (!username || !email || !password || !displayName || password.length < 8) {
-      return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Completá todos los campos y usá una contraseña de al menos 8 caracteres' } });
+    if (!username || !email || !password || !displayName) {
+      return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Completá todos los campos requeridos.' } });
+    }
+
+    // Validación de formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ error: { code: 'INVALID_EMAIL', message: 'El correo electrónico ingresado no tiene un formato válido.' } });
+    }
+
+    // Validación de contraseña robusta
+    if (password.length < 8 || !/(?=.*[a-zA-Z])(?=.*\d)/.test(password)) {
+      return res.status(400).json({
+        error: {
+          code: 'WEAK_PASSWORD',
+          message: 'La contraseña debe tener al menos 8 caracteres y combinar letras y números.'
+        }
+      });
+    }
+
+    const cleanUsername = username.trim().toLowerCase().replace(/[^a-zA-Z0-9_]/g, '');
+    if (cleanUsername.length < 3) {
+      return res.status(400).json({ error: { code: 'INVALID_USERNAME', message: 'El nombre de usuario debe tener al menos 3 caracteres.' } });
+    }
+
+    // Chequeo de duplicados
+    const [existing] = await pool.query('SELECT id, username, email FROM users WHERE username = ? OR email = ?', [cleanUsername, email.toLowerCase().trim()]);
+    if (existing.length > 0) {
+      if (existing[0].username === cleanUsername) {
+        return res.status(409).json({ error: { code: 'DUPLICATE_USERNAME', message: `El nombre de usuario @${cleanUsername} ya está ocupado.` } });
+      }
+      return res.status(409).json({ error: { code: 'DUPLICATE_EMAIL', message: 'Ya existe una cuenta con este correo electrónico.' } });
     }
 
     // Solo permitir roles normales de registro público; 'admin' requiere asignación explícita por otro admin
@@ -39,7 +69,7 @@ export async function register(req, res, next) {
       await connection.beginTransaction();
       const [result] = await connection.query(
         'INSERT INTO users (username, email, password_hash, display_name) VALUES (?, ?, ?, ?)',
-        [username, email.toLowerCase(), passwordHash, displayName]
+        [cleanUsername, email.toLowerCase().trim(), passwordHash, displayName.trim()]
       );
       const [roles] = await connection.query('SELECT id FROM roles WHERE name = ?', [assignedRole]);
       await connection.query('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [result.insertId, roles[0].id]);
@@ -143,6 +173,47 @@ export async function socialLogin(req, res, next) {
       connection.release();
     }
   } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateProfile(req, res, next) {
+  try {
+    const userId = req.auth.sub;
+    const { username, displayName, avatarUrl } = req.body;
+
+    if (username) {
+      const cleanUsername = username.trim().toLowerCase().replace(/[^a-zA-Z0-9_]/g, '');
+      if (cleanUsername.length < 3) {
+        return res.status(400).json({ error: { code: 'INVALID_USERNAME', message: 'El nombre de usuario debe tener al menos 3 caracteres alfanuméricos.' } });
+      }
+      const [existing] = await pool.query(
+        'SELECT id FROM users WHERE username = ? AND id != ?',
+        [cleanUsername, userId]
+      );
+      if (existing.length > 0) {
+        return res.status(409).json({ error: { code: 'DUPLICATE_USERNAME', message: `El nombre de usuario @${cleanUsername} ya está ocupado. Elige otro.` } });
+      }
+    }
+
+    await pool.query(
+      `UPDATE users SET
+        username = COALESCE(?, username),
+        display_name = COALESCE(?, display_name),
+        avatar_url = COALESCE(?, avatar_url)
+       WHERE id = ?`,
+      [username?.trim()?.toLowerCase() || null, displayName?.trim() || null, avatarUrl?.trim() || null, userId]
+    );
+
+    const updatedUser = await getUserWithRoles(userId);
+    res.json({
+      message: 'Perfil actualizado correctamente',
+      user: updatedUser
+    });
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: { code: 'DUPLICATE_USERNAME', message: 'Ese nombre de usuario ya está registrado.' } });
+    }
     next(error);
   }
 }

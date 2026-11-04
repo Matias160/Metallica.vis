@@ -3,6 +3,7 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   SafeAreaView,
@@ -29,6 +30,13 @@ export default function LoginScreen({ navigation }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [focusedInput, setFocusedInput] = useState(null);
 
+  // Modal para OAuth 2.0 / Conectar Redes Sociales
+  const [socialModalVisible, setSocialModalVisible] = useState(false);
+  const [socialProvider, setSocialProvider] = useState('google');
+  const [customSocialEmail, setCustomSocialEmail] = useState('');
+  const [customSocialName, setCustomSocialName] = useState('');
+  const [socialLoading, setSocialLoading] = useState(false);
+
   async function submit() {
     setErrorMsg('');
     if (!email.trim() || !password) {
@@ -46,36 +54,35 @@ export default function LoginScreen({ navigation }) {
     }
   }
 
-  async function handleSocial(provider) {
-    try {
-      setLoading(true);
-      setErrorMsg('');
-      const mockAccounts = {
-        google: {
-          id: `goog_${Date.now()}`,
-          email: 'usuario.google@gmail.com',
-          name: 'Coleccionista Google'
-        },
-        facebook: {
-          id: `fb_${Date.now()}`,
-          email: 'usuario.fb@facebook.com',
-          name: 'Coleccionista Facebook'
-        },
-        apple: {
-          id: `apple_${Date.now()}`,
-          email: 'usuario.apple@icloud.com',
-          name: 'Coleccionista Apple'
-        }
-      };
+  function openSocialModal(provider) {
+    setSocialProvider(provider);
+    setCustomSocialEmail(provider === 'google' ? 'coleccionista@gmail.com' : `usuario.${provider}@correo.com`);
+    setCustomSocialName(provider === 'google' ? 'Usuario Google' : `Coleccionista ${provider}`);
+    setSocialModalVisible(true);
+  }
 
-      const account = mockAccounts[provider];
-      await socialLogin(provider, account.id, account.email, account.name);
+  async function executeSocialLogin(provider, emailToUse, nameToUse) {
+    try {
+      setSocialLoading(true);
+      setErrorMsg('');
+      const cleanEmail = emailToUse.trim().toLowerCase();
+      if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+        throw new Error('Ingresá un correo electrónico válido');
+      }
+      const providerId = `${provider}_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      await socialLogin(provider, providerId, cleanEmail, nameToUse.trim() || cleanEmail.split('@')[0]);
+      setSocialModalVisible(false);
+      notify('Acceso exitoso', `Autenticado mediante OAuth 2.0 con ${provider.toUpperCase()}`, 'success');
     } catch (error) {
       setErrorMsg(error.message || `Error con ${provider}`);
       notify(`No se pudo conectar con ${provider}`, error.message, 'error');
     } finally {
-      setLoading(false);
+      setSocialLoading(false);
     }
+  }
+
+  async function handleSocial(provider) {
+    openSocialModal(provider);
   }
 
   function setDemoUser(demoEmail, demoPass = 'Password123!') {
@@ -113,58 +120,62 @@ export default function LoginScreen({ navigation }) {
               Plataforma de preservación musical, tiradas físicas limitadas y degradación analógica controlada entre generaciones.
             </Text>
 
-            {/* Ilustración de Funda de Vinilo / Máster Reel */}
-            <View accessible accessibilityLabel="Funda de disco máster con vinilo y vúmetro" style={styles.recordSleeve}>
-              <View style={styles.sleeveHeaderRow}>
-                <Text style={styles.sleeveTop}>MASTER TAPE ARCHIVE</Text>
-                <Text style={styles.sleeveVol}>VOL. 01 / REEL-A</Text>
-              </View>
+            {/* Ilustración de Funda de Vinilo / Máster Reel (Visible en escritorio/tablets) */}
+            {wide ? (
+              <View accessible accessibilityLabel="Funda de disco máster con vinilo y vúmetro" style={styles.recordSleeve}>
+                <View style={styles.sleeveHeaderRow}>
+                  <Text style={styles.sleeveTop}>MASTER TAPE ARCHIVE</Text>
+                  <Text style={styles.sleeveVol}>VOL. 01 / REEL-A</Text>
+                </View>
 
-              <View style={styles.record}>
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.groove,
-                      { width: `${92 - i * 14}%`, height: `${92 - i * 14}%` }
-                    ]}
-                  />
-                ))}
-                <View style={styles.recordLabel}>
-                  <Text style={styles.recordMark}>m.vis</Text>
-                  <Text style={styles.recordSmall}>SIDE A · 33 RPM</Text>
-                  <View style={styles.spindle} />
+                <View style={styles.record}>
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.groove,
+                        { width: `${92 - i * 14}%`, height: `${92 - i * 14}%` }
+                      ]}
+                    />
+                  ))}
+                  <View style={styles.recordLabel}>
+                    <Text style={styles.recordMark}>m.vis</Text>
+                    <Text style={styles.recordSmall}>SIDE A · 33 RPM</Text>
+                    <View style={styles.spindle} />
+                  </View>
+                </View>
+
+                {/* Vúmetro Analógico Integrado */}
+                <View style={styles.vuMeterBox}>
+                  <Text style={styles.vuLabel}>VU LEVEL</Text>
+                  <View style={styles.vuBarContainer}>
+                    <View style={[styles.vuSegment, styles.vuGreen]} />
+                    <View style={[styles.vuSegment, styles.vuGreen]} />
+                    <View style={[styles.vuSegment, styles.vuGreen]} />
+                    <View style={[styles.vuSegment, styles.vuGreen]} />
+                    <View style={[styles.vuSegment, styles.vuYellow]} />
+                    <View style={[styles.vuSegment, styles.vuYellow]} />
+                    <View style={[styles.vuSegment, styles.vuRed]} />
+                  </View>
+                  <Text style={styles.vuVal}>+3 dB</Text>
+                </View>
+
+                <View style={styles.sleeveFooter}>
+                  <Text style={styles.sleeveCaption}>COPIAS NUMERADAS CON LINAJE</Text>
+                  <Text style={styles.edition}>GEN 0 → GEN ∞</Text>
                 </View>
               </View>
+            ) : null}
 
-              {/* Vúmetro Analógico Integrado */}
-              <View style={styles.vuMeterBox}>
-                <Text style={styles.vuLabel}>VU LEVEL</Text>
-                <View style={styles.vuBarContainer}>
-                  <View style={[styles.vuSegment, styles.vuGreen]} />
-                  <View style={[styles.vuSegment, styles.vuGreen]} />
-                  <View style={[styles.vuSegment, styles.vuGreen]} />
-                  <View style={[styles.vuSegment, styles.vuGreen]} />
-                  <View style={[styles.vuSegment, styles.vuYellow]} />
-                  <View style={[styles.vuSegment, styles.vuYellow]} />
-                  <View style={[styles.vuSegment, styles.vuRed]} />
-                </View>
-                <Text style={styles.vuVal}>+3 dB</Text>
+            {wide ? (
+              <View style={styles.telemetryRow}>
+                <Text style={styles.telemetryItem}>● CALIDAD SOUNDBOARD</Text>
+                <Text style={styles.telemetryDivider}>|</Text>
+                <Text style={styles.telemetryItem}>DESGASTE REAL</Text>
+                <Text style={styles.telemetryDivider}>|</Text>
+                <Text style={styles.telemetryItem}>DUBBEO P2P</Text>
               </View>
-
-              <View style={styles.sleeveFooter}>
-                <Text style={styles.sleeveCaption}>COPIAS NUMERADAS CON LINAJE</Text>
-                <Text style={styles.edition}>GEN 0 → GEN ∞</Text>
-              </View>
-            </View>
-
-            <View style={styles.telemetryRow}>
-              <Text style={styles.telemetryItem}>● CALIDAD SOUNDBOARD</Text>
-              <Text style={styles.telemetryDivider}>|</Text>
-              <Text style={styles.telemetryItem}>DESGASTE REAL</Text>
-              <Text style={styles.telemetryDivider}>|</Text>
-              <Text style={styles.telemetryItem}>DUBBEO P2P</Text>
-            </View>
+            ) : null}
           </View>
 
           {/* Columna Derecha: Tarjeta de Acceso y Demo */}
@@ -395,6 +406,77 @@ export default function LoginScreen({ navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Modal Interactivo de Autenticación OAuth 2.0 */}
+      <Modal
+        visible={socialModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !socialLoading && setSocialModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.oauthBadge}>
+                <View style={styles.oauthDot} />
+                <Text style={styles.oauthBadgeText}>PROTOCOLO OAUTH 2.0 / OPENID CONNECT</Text>
+              </View>
+              <Text style={styles.modalTitle}>
+                Acceso con {socialProvider === 'google' ? 'Google' : socialProvider === 'facebook' ? 'Facebook' : 'Apple'}
+              </Text>
+              <Text style={styles.modalSubtitle}>
+                El servidor validará tu identidad mediante token OAuth y vinculará tu cuenta con tus cintas analógicas.
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>CORREO ELECTRÓNICO ASOCIADO</Text>
+              <TextInput
+                style={styles.input}
+                value={customSocialEmail}
+                onChangeText={setCustomSocialEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                placeholder="usuario@dominio.com"
+                placeholderTextColor={colors.mutedDark}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>NOMBRE COMPLETO</Text>
+              <TextInput
+                style={styles.input}
+                value={customSocialName}
+                onChangeText={setCustomSocialName}
+                placeholder="Tu Nombre"
+                placeholderTextColor={colors.mutedDark}
+              />
+            </View>
+
+            <View style={styles.modalBtnRow}>
+              <Pressable
+                style={styles.modalCancelBtn}
+                onPress={() => setSocialModalVisible(false)}
+                disabled={socialLoading}
+              >
+                <Text style={styles.modalCancelText}>CANCELAR</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.modalSubmitBtn, socialLoading && { opacity: 0.6 }]}
+                onPress={() => executeSocialLogin(socialProvider, customSocialEmail, customSocialName)}
+                disabled={socialLoading}
+              >
+                {socialLoading ? (
+                  <ActivityIndicator color={colors.background} />
+                ) : (
+                  <Text style={styles.modalSubmitText}>INGRESAR CON {socialProvider.toUpperCase()}</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -856,5 +938,86 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     lineHeight: 18
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 24
+  },
+  modalHeader: {
+    marginBottom: 16
+  },
+  oauthBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6
+  },
+  oauthDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.accent
+  },
+  oauthBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: colors.muted,
+    letterSpacing: 0.8
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.text,
+    letterSpacing: -0.3
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: colors.muted,
+    marginTop: 4,
+    lineHeight: 16
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 18
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center'
+  },
+  modalCancelText: {
+    color: colors.muted,
+    fontWeight: '800',
+    fontSize: 12
+  },
+  modalSubmitBtn: {
+    flex: 1.5,
+    backgroundColor: colors.accent,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  modalSubmitText: {
+    color: colors.background,
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.5
   }
 });

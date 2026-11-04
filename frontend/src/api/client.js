@@ -42,17 +42,43 @@ export async function apiRequest(path, options = {}) {
   }
 
   const execute = async (tokenToUse) => {
-    return await fetch(`${baseUrl}${path}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(tokenToUse ? { Authorization: `Bearer ${tokenToUse}` } : {})
-      },
-      ...options,
-      body: options.body ? JSON.stringify(options.body) : undefined
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    try {
+      const res = await fetch(`${baseUrl}${path}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(tokenToUse ? { Authorization: `Bearer ${tokenToUse}` } : {})
+        },
+        ...options,
+        signal: controller.signal,
+        body: options.body ? JSON.stringify(options.body) : undefined
+      });
+      return res;
+    } finally {
+      clearTimeout(timeout);
+    }
   };
 
-  let response = await execute(currentToken);
+  let response;
+  try {
+    response = await execute(currentToken);
+  } catch (netErr) {
+    // Si la conexión fue reseteada o falló, intentar una vez más tras 300ms
+    try {
+      await new Promise((r) => setTimeout(r, 300));
+      response = await execute(currentToken);
+    } catch (retryErr) {
+      const isAbort = retryErr.name === 'AbortError' || netErr.name === 'AbortError';
+      const errMsg = isAbort
+        ? 'El servidor tardó demasiado en responder (tiempo de espera agotado).'
+        : `No se pudo conectar al servidor en ${baseUrl}. Verificá que el backend esté ejecutándose en la misma red Wi-Fi.`;
+      const err = new Error(errMsg);
+      err.originalError = retryErr;
+      throw err;
+    }
+  }
+
   let data = await response.json().catch(() => ({}));
 
   // Manejo transparente de token expirado (HTTP 401 / INVALID_TOKEN)

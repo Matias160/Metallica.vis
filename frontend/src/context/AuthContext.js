@@ -87,6 +87,24 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function updateProfile({ username, displayName, avatarUrl }) {
+    const data = await apiRequest('/auth/profile', {
+      method: 'PUT',
+      token,
+      body: { username, displayName, avatarUrl }
+    });
+    if (data.user) {
+      setUser(data.user);
+      const saved = await sessionStorage.get('metallica_session');
+      if (saved) {
+        const session = JSON.parse(saved);
+        session.user = data.user;
+        await sessionStorage.set('metallica_session', JSON.stringify(session));
+      }
+    }
+    return data;
+  }
+
   async function logout() {
     setUser(null);
     setToken(null);
@@ -102,6 +120,7 @@ export function AuthProvider({ children }) {
         login,
         register,
         socialLogin,
+        updateProfile,
         refreshUser,
         logout
       }}

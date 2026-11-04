@@ -1,14 +1,100 @@
 // Perfil del miembro, sincronización de permisos y selector de apariencia de estudio.
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View
+} from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { useTheme } from '../../context/ThemeContext';
 import { colors, shadows } from '../../theme/colors';
 
+const AVATAR_PRESETS = [
+  { id: 'cassette', name: 'Cassette Cromo', uri: 'https://images.unsplash.com/photo-1542208998-f6dbbb27a72f?w=180&auto=format&fit=crop&q=80' },
+  { id: 'vinyl', name: 'Vinilo Master', uri: 'https://images.unsplash.com/photo-1539185441755-769473a23570?w=180&auto=format&fit=crop&q=80' },
+  { id: 'amp', name: 'Amplificador', uri: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=180&auto=format&fit=crop&q=80' },
+  { id: 'stage', name: 'Escenario Live', uri: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=180&auto=format&fit=crop&q=80' },
+  { id: 'reel', name: 'Carrete Reel', uri: 'https://images.unsplash.com/photo-1520523839898-507125cd53c1?w=180&auto=format&fit=crop&q=80' }
+];
+
 export default function ProfileScreen() {
-  const { user, refreshUser, logout } = useAuth();
+  const { user, refreshUser, updateProfile, logout } = useAuth();
   const { notify } = useFeedback();
   const { isDark, palette, toggleTheme } = useTheme();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [displayName, setDisplayName] = useState(user?.display_name || '');
+  const [username, setUsername] = useState(user?.username || '');
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState('');
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  function openEditModal() {
+    setDisplayName(user?.display_name || '');
+    setUsername(user?.username || '');
+    setAvatarUrl(user?.avatar_url || '');
+    setEditError('');
+    setIsEditing(true);
+  }
+
+  async function handleSaveProfile() {
+    setEditError('');
+    if (!displayName.trim()) {
+      setEditError('El nombre no puede estar vacío.');
+      return;
+    }
+    const cleanUser = username.trim().toLowerCase().replace(/[^a-zA-Z0-9_]/g, '');
+    if (cleanUser.length < 3) {
+      setEditError('El usuario debe tener al menos 3 caracteres alfanuméricos.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await updateProfile({
+        displayName: displayName.trim(),
+        username: cleanUser,
+        avatarUrl: avatarUrl.trim() || null
+      });
+      notify('Perfil actualizado', 'Tus datos se guardaron correctamente.', 'success');
+      setIsEditing(false);
+    } catch (err) {
+      setEditError(err.message || 'Error al actualizar perfil');
+      notify('No se pudo guardar', err.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleLogoutPrompt() {
+    if (Platform.OS === 'web') {
+      setShowLogoutModal(true);
+    } else {
+      Alert.alert(
+        '¿Cerrar Sesión?',
+        '¿Estás seguro de que deseás cerrar sesión en este dispositivo? Deberás volver a ingresar para acceder a tus cintas.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Cerrar Sesión',
+            style: 'destructive',
+            onPress: () => logout()
+          }
+        ]
+      );
+    }
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: palette.background }]}>
@@ -41,11 +127,18 @@ export default function ProfileScreen() {
         >
           <View style={styles.avatarRow}>
             <View style={styles.avatarWrap}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {(user?.display_name || user?.username || 'U')[0].toUpperCase()}
-                </Text>
-              </View>
+              {user?.avatar_url ? (
+                <Image
+                  source={{ uri: user.avatar_url }}
+                  style={[styles.avatarImage, { borderColor: palette.accent }]}
+                />
+              ) : (
+                <View style={[styles.avatar, { backgroundColor: palette.accent }]}>
+                  <Text style={styles.avatarText}>
+                    {(user?.display_name || user?.username || 'U')[0].toUpperCase()}
+                  </Text>
+                </View>
+              )}
               <View style={styles.avatarDot} />
             </View>
 
@@ -53,6 +146,13 @@ export default function ProfileScreen() {
               <Text style={[styles.name, { color: palette.text }]}>{user?.display_name}</Text>
               <Text style={styles.username}>@{user?.username}</Text>
               <Text style={[styles.email, { color: palette.muted }]}>{user?.email}</Text>
+              
+              <Pressable
+                style={[styles.editProfileBtn, { backgroundColor: palette.accentMuted, borderColor: palette.accentBorder }]}
+                onPress={openEditModal}
+              >
+                <Text style={[styles.editProfileBtnText, { color: palette.accent }]}>✎ EDITAR PERFIL Y FOTO</Text>
+              </Pressable>
             </View>
           </View>
 
@@ -129,12 +229,151 @@ export default function ProfileScreen() {
               styles.logoutButton,
               pressed && { backgroundColor: '#45121b' }
             ]}
-            onPress={logout}
+            onPress={handleLogoutPrompt}
           >
             <Text style={styles.logoutButtonText}>CERRAR SESIÓN</Text>
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Modal / Popup de Confirmación de Cierre de Sesión */}
+      <Modal
+        visible={showLogoutModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <Text style={[styles.modalTitle, { color: palette.text }]}>¿Cerrar Sesión?</Text>
+            <Text style={[styles.modalMessage, { color: palette.muted }]}>
+              ¿Confirmás que deseás cerrar la sesión de @{user?.username} en este dispositivo? Deberás volver a ingresar para acceder a tu estantería y reproducir cintas.
+            </Text>
+
+            <View style={styles.modalBtnRow}>
+              <Pressable
+                style={[styles.modalCancelBtn, { borderColor: palette.border }]}
+                onPress={() => setShowLogoutModal(false)}
+              >
+                <Text style={[styles.modalCancelText, { color: palette.textSecondary }]}>CANCELAR</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.modalConfirmBtn, { backgroundColor: colors.danger }]}
+                onPress={() => {
+                  setShowLogoutModal(false);
+                  logout();
+                }}
+              >
+                <Text style={styles.modalConfirmText}>CERRAR SESIÓN</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Edición de Perfil y Foto */}
+      <Modal
+        visible={isEditing}
+        transparent
+        animationType="slide"
+        onRequestClose={() => !saving && setIsEditing(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={[styles.modalCardLarge, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <View style={styles.editHeader}>
+                <Text style={[styles.modalTitle, { color: palette.text }]}>Editar Pasaporte</Text>
+                <Pressable onPress={() => !saving && setIsEditing(false)}>
+                  <Text style={{ color: palette.muted, fontSize: 18 }}>✕</Text>
+                </Pressable>
+              </View>
+
+              {editError ? (
+                <View style={[styles.errorBox, { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder }]}>
+                  <Text style={[styles.errorText, { color: palette.danger }]}>⚠ {editError}</Text>
+                </View>
+              ) : null}
+
+              <Text style={[styles.inputLabel, { color: palette.muted }]}>NOMBRE COMPLETO / VISIBLE</Text>
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
+                value={displayName}
+                onChangeText={setDisplayName}
+                placeholder="Nombre para mostrar"
+                placeholderTextColor={palette.muted}
+              />
+
+              <Text style={[styles.inputLabel, { color: palette.muted }]}>NOMBRE DE USUARIO (@handle)</Text>
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                placeholder="hetfield_riffs"
+                placeholderTextColor={palette.muted}
+              />
+
+              <Text style={[styles.inputLabel, { color: palette.muted }]}>FOTO DE PERFIL (ELEGÍ UN PRESET O PEGÁ URL)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetRow}>
+                {AVATAR_PRESETS.map((p) => {
+                  const isSelected = avatarUrl === p.uri;
+                  return (
+                    <Pressable
+                      key={p.id}
+                      style={[
+                        styles.presetCard,
+                        { borderColor: isSelected ? palette.accent : palette.border },
+                        isSelected && { backgroundColor: palette.accentMuted }
+                      ]}
+                      onPress={() => setAvatarUrl(p.uri)}
+                    >
+                      <Image source={{ uri: p.uri }} style={styles.presetImg} />
+                      <Text style={[styles.presetText, { color: isSelected ? palette.accent : palette.muted }]}>
+                        {p.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text, marginTop: 8 }]}
+                value={avatarUrl}
+                onChangeText={setAvatarUrl}
+                placeholder="O pegá una URL directa de imagen (https://...)"
+                placeholderTextColor={palette.muted}
+                autoCapitalize="none"
+              />
+
+              <View style={styles.modalBtnRow}>
+                <Pressable
+                  style={[styles.modalCancelBtn, { borderColor: palette.border }]}
+                  onPress={() => setIsEditing(false)}
+                  disabled={saving}
+                >
+                  <Text style={[styles.modalCancelText, { color: palette.textSecondary }]}>CANCELAR</Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.modalConfirmBtn, { backgroundColor: palette.accent }, saving && { opacity: 0.6 }]}
+                  onPress={handleSaveProfile}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={palette.background} />
+                  ) : (
+                    <Text style={[styles.modalConfirmText, { color: palette.background }]}>GUARDAR CAMBIOS</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -371,5 +610,137 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontSize: 12,
     letterSpacing: 1
+  },
+  avatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2
+  },
+  editProfileBtn: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1
+  },
+  editProfileBtnText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1
+  },
+  modalCardLarge: {
+    width: '100%',
+    maxWidth: 500,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    alignSelf: 'center'
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 8
+  },
+  modalMessage: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 20
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 18
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center'
+  },
+  modalCancelText: {
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  modalConfirmText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '900'
+  },
+  editHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginTop: 12,
+    marginBottom: 6
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13
+  },
+  presetRow: {
+    flexDirection: 'row',
+    marginVertical: 6
+  },
+  presetCard: {
+    alignItems: 'center',
+    marginRight: 10,
+    padding: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    width: 80
+  },
+  presetImg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginBottom: 4
+  },
+  presetText: {
+    fontSize: 9,
+    fontWeight: '700',
+    textAlign: 'center'
+  },
+  errorBox: {
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '700'
   }
 });

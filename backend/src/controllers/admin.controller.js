@@ -43,12 +43,19 @@ export async function updateUserRole(req, res, next) {
 export async function toggleUserStatus(req, res, next) {
   try {
     const { id } = req.params;
-    const [rows] = await pool.query('SELECT is_active FROM users WHERE id = ?', [id]);
+    const [rows] = await pool.query('SELECT is_active, username FROM users WHERE id = ?', [id]);
     if (!rows[0]) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Usuario inexistente' } });
 
     const newStatus = !rows[0].is_active;
     await pool.query('UPDATE users SET is_active = ? WHERE id = ?', [newStatus, id]);
-    res.json({ message: `Usuario ${newStatus ? 'activado' : 'suspendido'} correctamente`, isActive: newStatus });
+    if (!newStatus) {
+      // Revocar todas sus sesiones activas de inmediato
+      await pool.query('UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ?', [id]);
+    }
+    res.json({
+      message: `Usuario @${rows[0].username} ${newStatus ? 'activado' : 'baneado/suspendido'} correctamente`,
+      isActive: newStatus
+    });
   } catch (error) { next(error); }
 }
 

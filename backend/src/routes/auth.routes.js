@@ -1,6 +1,6 @@
 // Endpoints públicos de registro, acceso y perfil.
 import { Router } from 'express';
-import { login, me, refresh, register, socialLogin } from '../controllers/auth.controller.js';
+import { login, me, refresh, register, socialLogin, updateProfile } from '../controllers/auth.controller.js';
 import { requireAuth } from '../middlewares/auth.middleware.js';
 
 const router = Router();
@@ -9,5 +9,6 @@ router.post('/login', login);
 router.post('/social-login', socialLogin);
 router.post('/refresh', refresh);
 router.get('/me', requireAuth, me);
+router.put('/profile', requireAuth, updateProfile);
 
 export default router;
