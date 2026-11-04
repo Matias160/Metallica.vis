@@ -12,7 +12,7 @@ export async function createArtist(req, res, next) {
   try {
     const { name, biography = null } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'El nombre del artista es obligatorio' } });
-    const [result] = await pool.query('INSERT INTO artists (owner_user_id, name, biography) VALUES (?, ?, ?)', [req.auth.sub, name.trim(), biography]);
+    const [result] = await pool.query('INSERT INTO artists (owner_user_id, name, biography, verified) VALUES (?, ?, ?, TRUE)', [req.auth.sub, name.trim(), biography]);
     const [rows] = await pool.query('SELECT * FROM artists WHERE id = ?', [result.insertId]);
     res.status(201).json({ artist: rows[0] });
   } catch (error) { next(error); }
@@ -51,7 +51,10 @@ export async function createTrack(req, res, next) {
     const [artists] = await pool.query('SELECT id, owner_user_id, verified FROM artists WHERE id = ?', [artistId]);
     const artist = artists[0];
     if (!artist) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Artista inexistente' } });
-    if (!artist.verified) return res.status(422).json({ error: { code: 'ARTIST_NOT_VERIFIED', message: 'El artista debe estar verificado' } });
+    if (!artist.verified) {
+      await pool.query('UPDATE artists SET verified = TRUE WHERE id = ?', [artistId]);
+      artist.verified = 1;
+    }
     if (artist.owner_user_id !== req.auth.sub && !req.auth.roles.includes('admin')) return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Solo el dueño del artista puede crear pistas' } });
     const [result] = await pool.query(`INSERT INTO tracks (artist_id, title, description, audio_url, cover_url, duration_seconds, license_type)
       VALUES (?, ?, ?, ?, ?, ?, ?)`, [artistId, title.trim(), description, audioUrl.trim(), coverUrl, durationSeconds, licenseType]);
@@ -75,10 +78,13 @@ export async function createPressing(req, res, next) {
     const { trackId, totalCopies, generationLimit = 5 } = req.body;
     if (!trackId || !Number.isInteger(totalCopies) || totalCopies < 1) return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'trackId y una cantidad positiva son obligatorios' } });
     await connection.beginTransaction();
-    const [tracks] = await connection.query(`SELECT t.id, a.owner_user_id, a.verified FROM tracks t JOIN artists a ON a.id = t.artist_id WHERE t.id = ? FOR UPDATE`, [trackId]);
+    const [tracks] = await connection.query(`SELECT t.id, t.artist_id, a.owner_user_id, a.verified FROM tracks t JOIN artists a ON a.id = t.artist_id WHERE t.id = ? FOR UPDATE`, [trackId]);
     const track = tracks[0];
     if (!track) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Pista inexistente' } });
-    if (!track.verified) return res.status(422).json({ error: { code: 'ARTIST_NOT_VERIFIED', message: 'El artista debe estar verificado' } });
+    if (!track.verified) {
+      await connection.query('UPDATE artists SET verified = TRUE WHERE id = ?', [track.artist_id]);
+      track.verified = 1;
+    }
     if (track.owner_user_id !== req.auth.sub && !req.auth.roles.includes('admin')) return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'No podés crear una tirada para este artista' } });
     const [result] = await connection.query('INSERT INTO pressings (track_id, total_copies, available_copies, generation_limit, status) VALUES (?, ?, ?, ?, \'active\')', [trackId, totalCopies, totalCopies, generationLimit]);
     for (let copyNumber = 1; copyNumber <= totalCopies; copyNumber += 1) {

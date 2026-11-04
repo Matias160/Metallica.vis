@@ -28,6 +28,10 @@ yarn-error.log*
 tmp/
 output/
 
+# Subidas de usuarios
+backend/public/uploads/*
+!backend/public/uploads/.gitkeep
+
 # Permitir APK en carpeta de release para distribución directa
 !release/*.apk
 

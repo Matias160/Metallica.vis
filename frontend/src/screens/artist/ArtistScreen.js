@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
@@ -135,7 +136,7 @@ export default function ArtistScreen() {
   async function handleSelectLocalAudioFile() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['audio/*'],
+        type: ['audio/*', '*/*'],
         copyToCacheDirectory: true
       });
 
@@ -144,6 +145,13 @@ export default function ArtistScreen() {
       }
 
       const file = result.assets[0];
+      const ext = (file.name || '').split('.').pop().toLowerCase();
+      const validAudioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'];
+      if (!validAudioExts.includes(ext) && file.mimeType && !file.mimeType.startsWith('audio/')) {
+        notify('Formato no reconocido', 'Por favor seleccioná un archivo de audio (MP3, WAV, FLAC, OGG, M4A o AAC).', 'warning');
+        return;
+      }
+
       const sizeMB = ((file.size || 0) / (1024 * 1024)).toFixed(2);
       setUploadedFileName(file.name);
       setUploadedFileSize(`${sizeMB} MB`);
@@ -159,22 +167,30 @@ export default function ArtistScreen() {
           reader.readAsDataURL(file.file);
         });
       } else {
-        const resBlob = await fetch(file.uri);
-        const blob = await resBlob.blob();
-        base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+        // En Android/iOS nativo usar FileSystem de Expo de forma segura
+        try {
+          base64Data = await FileSystem.readAsStringAsync(file.uri, {
+            encoding: FileSystem.EncodingType?.Base64 || 'base64'
+          });
+        } catch (fsErr) {
+          const resBlob = await fetch(file.uri);
+          const blob = await resBlob.blob();
+          base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        }
       }
 
       const res = await apiRequest('/upload', {
         method: 'POST',
+        token,
         body: {
           filename: file.name,
           base64: base64Data,
-          mimeType: file.mimeType || 'audio/mpeg'
+          mimeType: file.mimeType || (ext === 'mp3' ? 'audio/mpeg' : `audio/${ext}`)
         }
       });
 
@@ -197,7 +213,7 @@ export default function ArtistScreen() {
   async function handleSelectCoverImage() {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/*'],
+        type: ['image/*', '*/*'],
         copyToCacheDirectory: true
       });
 
@@ -216,18 +232,25 @@ export default function ArtistScreen() {
           reader.readAsDataURL(file.file);
         });
       } else {
-        const resBlob = await fetch(file.uri);
-        const blob = await resBlob.blob();
-        base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+        try {
+          base64Data = await FileSystem.readAsStringAsync(file.uri, {
+            encoding: FileSystem.EncodingType?.Base64 || 'base64'
+          });
+        } catch (fsErr) {
+          const resBlob = await fetch(file.uri);
+          const blob = await resBlob.blob();
+          base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        }
       }
 
       const res = await apiRequest('/upload', {
         method: 'POST',
+        token,
         body: {
           filename: file.name,
           base64: base64Data,
@@ -247,13 +270,25 @@ export default function ArtistScreen() {
       notify('Datos requeridos', 'Título y Audio (archivo subido o URL) son obligatorios.', 'warning');
       return;
     }
-    if (!myArtist) {
-      notify('Perfil pendiente', 'Necesitás un perfil de artista activo.', 'warning');
-      return;
-    }
 
     try {
       setSavingTrack(true);
+
+      let currentArtist = myArtist;
+      if (!currentArtist) {
+        // Auto-crear perfil de artista en caso de que aún no exista para este usuario
+        const artistRes = await apiRequest('/artists', {
+          method: 'POST',
+          token,
+          body: {
+            name: user?.display_name || user?.username || 'Sello Independiente',
+            biography: 'Sello y estudio de masterización oficial.'
+          }
+        });
+        currentArtist = artistRes.artist;
+        setMyArtist(currentArtist);
+      }
+
       if (editingTrack) {
         await apiRequest(`/tracks/${editingTrack.id}`, {
           method: 'PUT',
@@ -266,7 +301,7 @@ export default function ArtistScreen() {
           method: 'POST',
           token,
           body: {
-            artistId: myArtist.id,
+            artistId: currentArtist.id,
             title,
             description,
             audioUrl,
@@ -345,13 +380,24 @@ export default function ArtistScreen() {
         ]}
       >
         <View style={styles.topBarInner}>
-          <View style={styles.headerInfo}>
+          <View style={styles.topMetaRow}>
             <View style={styles.badgeRow}>
               <View style={[styles.recIndicator, { backgroundColor: palette.danger }]} />
               <Text style={[styles.badgeRowText, { color: palette.muted }]}>
                 CONSOLA DE GRABACIÓN & MASTERING
               </Text>
             </View>
+            <Pressable
+              style={[styles.themeBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
+              onPress={toggleTheme}
+            >
+              <Text style={[styles.themeBtnText, { color: palette.text }]}>
+                {isDark ? '☀ DÍA' : '◐ NOCHE'}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.titleAndSelloRow}>
             <Text style={[styles.title, { color: palette.text }]}>Estudio Artista</Text>
 
             <View style={styles.labelBadgeRow}>
@@ -371,25 +417,14 @@ export default function ArtistScreen() {
             </View>
           </View>
 
-          <View style={styles.headerRightActions}>
-            <Pressable
-              style={[styles.themeBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
-              onPress={toggleTheme}
-            >
-              <Text style={[styles.themeBtnText, { color: palette.text }]}>
-                {isDark ? '☀ DÍA' : '◐ NOCHE'}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.createBtn, { backgroundColor: palette.accent }, shadows.glowAccent]}
-              onPress={openCreateTrack}
-            >
-              <Text style={[styles.createBtnText, { color: palette.background }]}>
-                + SUBIR MÚSICA
-              </Text>
-            </Pressable>
-          </View>
+          <Pressable
+            style={[styles.createBtnFull, { backgroundColor: palette.accent }, shadows.glowAccent]}
+            onPress={openCreateTrack}
+          >
+            <Text style={[styles.createBtnText, { color: palette.background }]}>
+              + SUBIR NUEVA CANCIÓN AL MÁSTER
+            </Text>
+          </Pressable>
         </View>
       </View>
 
@@ -469,8 +504,16 @@ export default function ArtistScreen() {
               <Text style={styles.emptyIcon}>🎙</Text>
               <Text style={[styles.emptyTitle, { color: palette.text }]}>Sin grabaciones en tu máster</Text>
               <Text style={[styles.emptySub, { color: palette.muted }]}>
-                Tocá "+ Subir Música" para cargar archivos de audio locales (MP3/WAV/FLAC), o seleccionar presets de cinta analógica.
+                Aún no subiste canciones. Podés cargar archivos de audio locales (MP3, WAV, FLAC, M4A) o seleccionar presets analógicos.
               </Text>
+              <Pressable
+                style={[styles.emptyActionBtn, { backgroundColor: palette.accent }, shadows.glowAccent]}
+                onPress={openCreateTrack}
+              >
+                <Text style={[styles.emptyActionBtnText, { color: palette.background }]}>
+                  + SUBIR MI PRIMERA PISTA
+                </Text>
+              </Pressable>
             </View>
           }
         />
@@ -635,17 +678,9 @@ export default function ArtistScreen() {
                 onChangeText={setLicenseType}
               />
 
-              <View style={styles.modalButtons}>
+              <View style={styles.modalButtonsStacked}>
                 <Pressable
-                  style={styles.cancelBtn}
-                  onPress={() => setTrackModalVisible(false)}
-                  disabled={savingTrack}
-                >
-                  <Text style={[styles.cancelBtnText, { color: palette.muted }]}>CANCELAR</Text>
-                </Pressable>
-
-                <Pressable
-                  style={[styles.saveBtn, { backgroundColor: palette.accent }, savingTrack && { opacity: 0.6 }]}
+                  style={[styles.saveBtnFull, { backgroundColor: palette.accent }, savingTrack && { opacity: 0.6 }]}
                   onPress={saveTrack}
                   disabled={savingTrack}
                 >
@@ -656,6 +691,14 @@ export default function ArtistScreen() {
                       {editingTrack ? 'GUARDAR CAMBIOS' : 'PUBLICAR EN MÁSTER'}
                     </Text>
                   )}
+                </Pressable>
+
+                <Pressable
+                  style={[styles.cancelBtnFull, { borderColor: palette.border }]}
+                  onPress={() => setTrackModalVisible(false)}
+                  disabled={savingTrack}
+                >
+                  <Text style={[styles.cancelBtnText, { color: palette.muted }]}>CANCELAR</Text>
                 </Pressable>
               </View>
             </View>
@@ -693,17 +736,9 @@ export default function ArtistScreen() {
               onChangeText={setGenerationLimit}
             />
 
-            <View style={styles.modalButtons}>
+            <View style={styles.modalButtonsStacked}>
               <Pressable
-                style={styles.cancelBtn}
-                onPress={() => setPressingModalVisible(false)}
-                disabled={savingPressing}
-              >
-                <Text style={[styles.cancelBtnText, { color: palette.muted }]}>CANCELAR</Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.saveBtn, { backgroundColor: palette.accent }, savingPressing && { opacity: 0.6 }]}
+                style={[styles.saveBtnFull, { backgroundColor: palette.accent }, savingPressing && { opacity: 0.6 }]}
                 onPress={savePressing}
                 disabled={savingPressing}
               >
@@ -712,6 +747,14 @@ export default function ArtistScreen() {
                 ) : (
                   <Text style={[styles.saveBtnText, { color: palette.background }]}>ACUÑAR EN CATÁLOGO</Text>
                 )}
+              </Pressable>
+
+              <Pressable
+                style={[styles.cancelBtnFull, { borderColor: palette.border }]}
+                onPress={() => setPressingModalVisible(false)}
+                disabled={savingPressing}
+              >
+                <Text style={[styles.cancelBtnText, { color: palette.muted }]}>CANCELAR</Text>
               </Pressable>
             </View>
           </View>
@@ -732,12 +775,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1
   },
   topBarInner: {
+    maxWidth: 720,
+    alignSelf: 'center',
+    width: '100%',
+    gap: 10
+  },
+  topMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    maxWidth: 720,
-    alignSelf: 'center',
     width: '100%'
+  },
+  titleAndSelloRow: {
+    gap: 4
+  },
+  createBtnFull: {
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginTop: 4
   },
   headerInfo: {
     flex: 1
@@ -962,6 +1021,18 @@ const styles = StyleSheet.create({
     marginTop: 6,
     lineHeight: 18
   },
+  emptyActionBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    marginTop: 18,
+    alignItems: 'center'
+  },
+  emptyActionBtnText: {
+    fontWeight: '900',
+    fontSize: 13,
+    letterSpacing: 0.8
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(5, 6, 10, 0.92)',
@@ -1111,6 +1182,26 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: 10,
     marginTop: 8
+  },
+  modalButtonsStacked: {
+    gap: 10,
+    marginTop: 14,
+    width: '100%'
+  },
+  saveBtnFull: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%'
+  },
+  cancelBtnFull: {
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    width: '100%'
   },
   cancelBtn: {
     padding: 12
