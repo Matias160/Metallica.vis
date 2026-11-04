@@ -273,107 +273,114 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* Modal de Edición de Perfil y Foto */}
+      {/* Modal / Bottom Sheet de Edición de Perfil y Foto */}
       <Modal
         visible={isEditing}
         transparent
         animationType="slide"
         onRequestClose={() => !saving && setIsEditing(false)}
       >
-        <View style={styles.modalOverlay}>
-          <ScrollView
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={[styles.modalCardLarge, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <View style={styles.editHeader}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalCardLarge, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            {/* Tirador visual analógico */}
+            <View style={[styles.sheetHandle, { backgroundColor: palette.border }]} />
+
+            <View style={styles.editHeader}>
+              <View>
                 <Text style={[styles.modalTitle, { color: palette.text }]}>Editar Pasaporte</Text>
-                <Pressable onPress={() => !saving && setIsEditing(false)}>
-                  <Text style={{ color: palette.muted, fontSize: 18 }}>✕</Text>
-                </Pressable>
+                <Text style={[styles.modalSubtitle, { color: palette.muted }]}>
+                  Personalizá tu credencial y avatar de estudio
+                </Text>
               </View>
-
-              {editError ? (
-                <View style={[styles.errorBox, { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder }]}>
-                  <Text style={[styles.errorText, { color: palette.danger }]}>⚠ {editError}</Text>
-                </View>
-              ) : null}
-
-              <Text style={[styles.inputLabel, { color: palette.muted }]}>NOMBRE COMPLETO / VISIBLE</Text>
-              <TextInput
-                style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
-                value={displayName}
-                onChangeText={setDisplayName}
-                placeholder="Nombre para mostrar"
-                placeholderTextColor={palette.muted}
-              />
-
-              <Text style={[styles.inputLabel, { color: palette.muted }]}>NOMBRE DE USUARIO (@handle)</Text>
-              <TextInput
-                style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                placeholder="hetfield_riffs"
-                placeholderTextColor={palette.muted}
-              />
-
-              <Text style={[styles.inputLabel, { color: palette.muted }]}>FOTO DE PERFIL (ELEGÍ UN PRESET O PEGÁ URL)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.presetRow}>
-                {AVATAR_PRESETS.map((p) => {
-                  const isSelected = avatarUrl === p.uri;
-                  return (
-                    <Pressable
-                      key={p.id}
-                      style={[
-                        styles.presetCard,
-                        { borderColor: isSelected ? palette.accent : palette.border },
-                        isSelected && { backgroundColor: palette.accentMuted }
-                      ]}
-                      onPress={() => setAvatarUrl(p.uri)}
-                    >
-                      <Image source={{ uri: p.uri }} style={styles.presetImg} />
-                      <Text style={[styles.presetText, { color: isSelected ? palette.accent : palette.muted }]}>
-                        {p.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-
-              <TextInput
-                style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text, marginTop: 8 }]}
-                value={avatarUrl}
-                onChangeText={setAvatarUrl}
-                placeholder="O pegá una URL directa de imagen (https://...)"
-                placeholderTextColor={palette.muted}
-                autoCapitalize="none"
-              />
-
-              <View style={styles.modalBtnRow}>
-                <Pressable
-                  style={[styles.modalConfirmBtn, { backgroundColor: palette.accent }, saving && { opacity: 0.6 }]}
-                  onPress={handleSaveProfile}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color={palette.background} />
-                  ) : (
-                    <Text style={[styles.modalConfirmText, { color: palette.background }]}>GUARDAR CAMBIOS</Text>
-                  )}
-                </Pressable>
-
-                <Pressable
-                  style={[styles.modalCancelBtn, { borderColor: palette.border }]}
-                  onPress={() => setIsEditing(false)}
-                  disabled={saving}
-                >
-                  <Text style={[styles.modalCancelText, { color: palette.textSecondary }]}>CANCELAR</Text>
-                </Pressable>
-              </View>
+              <Pressable
+                style={[styles.closeModalBtn, { backgroundColor: palette.surfaceDark, borderColor: palette.border }]}
+                onPress={() => !saving && setIsEditing(false)}
+              >
+                <Text style={{ color: palette.muted, fontSize: 16, fontWeight: '700' }}>✕</Text>
+              </Pressable>
             </View>
-          </ScrollView>
-        </View>
+
+            {editError ? (
+              <View style={[styles.errorBox, { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder }]}>
+                <Text style={[styles.errorText, { color: palette.danger }]}>⚠ {editError}</Text>
+              </View>
+            ) : null}
+
+            <Text style={[styles.inputLabel, { color: palette.muted }]}>NOMBRE COMPLETO / VISIBLE</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Nombre para mostrar"
+              placeholderTextColor={palette.muted}
+            />
+
+            <Text style={[styles.inputLabel, { color: palette.muted }]}>NOMBRE DE USUARIO (@handle)</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+              placeholder="hetfield_riffs"
+              placeholderTextColor={palette.muted}
+            />
+
+            <Text style={[styles.inputLabel, { color: palette.muted }]}>ELEGÍ TU AVATAR ANALÓGICO</Text>
+            <View style={styles.presetsGrid}>
+              {AVATAR_PRESETS.map((p) => {
+                const isSelected = avatarUrl === p.uri;
+                return (
+                  <Pressable
+                    key={p.id}
+                    style={[
+                      styles.presetCircleBtn,
+                      { borderColor: isSelected ? palette.accent : palette.borderSubtle },
+                      isSelected && { borderColor: palette.accent, borderWidth: 3 }
+                    ]}
+                    onPress={() => setAvatarUrl(p.uri)}
+                  >
+                    <Image source={{ uri: p.uri }} style={styles.presetCircleImg} />
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text style={[styles.inputLabel, { color: palette.muted }]}>O PEGÁ TU URL DE IMAGEN DIRECTA</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
+              value={avatarUrl}
+              onChangeText={setAvatarUrl}
+              placeholder="https://ejemplo.com/mi-avatar.jpg"
+              placeholderTextColor={palette.muted}
+              autoCapitalize="none"
+            />
+
+            <View style={styles.modalBtnRow}>
+              <Pressable
+                style={[styles.modalConfirmBtn, { backgroundColor: palette.accent }, saving && { opacity: 0.6 }]}
+                onPress={handleSaveProfile}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color={palette.background} />
+                ) : (
+                  <Text style={[styles.modalConfirmText, { color: palette.background }]}>GUARDAR CAMBIOS</Text>
+                )}
+              </Pressable>
+
+              <Pressable
+                style={[styles.modalCancelBtn, { borderColor: palette.border }]}
+                onPress={() => setIsEditing(false)}
+                disabled={saving}
+              >
+                <Text style={[styles.modalCancelText, { color: palette.textSecondary }]}>CANCELAR</Text>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -634,9 +641,8 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 12
+    justifyContent: 'flex-end',
+    alignItems: 'center'
   },
   modalCard: {
     width: '100%',
@@ -647,16 +653,39 @@ const styles = StyleSheet.create({
   },
   modalCardLarge: {
     width: '100%',
-    maxWidth: 440,
-    borderRadius: 16,
-    padding: 18,
+    maxWidth: 500,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 28,
     borderWidth: 1,
-    alignSelf: 'center'
+    borderBottomWidth: 0
+  },
+  sheetHandle: {
+    width: 44,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 14
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '900',
-    marginBottom: 8
+    fontWeight: '900'
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    marginTop: 2
+  },
+  closeModalBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   modalMessage: {
     fontSize: 13,
@@ -695,7 +724,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16
+    marginBottom: 14
   },
   inputLabel: {
     fontSize: 10,
@@ -711,28 +740,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 13
   },
-  presetRow: {
+  presetsGrid: {
     flexDirection: 'row',
-    marginVertical: 6
+    justifyContent: 'space-between',
+    marginVertical: 8
   },
-  presetCard: {
+  presetCircleBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    overflow: 'hidden',
     alignItems: 'center',
-    marginRight: 10,
-    padding: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    width: 80
+    justifyContent: 'center'
   },
-  presetImg: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginBottom: 4
-  },
-  presetText: {
-    fontSize: 9,
-    fontWeight: '700',
-    textAlign: 'center'
+  presetCircleImg: {
+    width: '100%',
+    height: '100%'
   },
   errorBox: {
     padding: 10,

@@ -26,11 +26,6 @@ const ROLES = [
     id: 'artist',
     label: 'Artista / Sello',
     desc: 'Sube música al máster y acuña tiradas físicas limitadas con cuota estricta.'
-  },
-  {
-    id: 'admin',
-    label: 'Archivista / Admin',
-    desc: 'Audita el sistema, modera sellos discográficos y administra permisos.'
   }
 ];
 

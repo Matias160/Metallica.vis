@@ -14,6 +14,7 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as DocumentPicker from 'expo-document-picker';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
@@ -130,98 +131,114 @@ export default function ArtistScreen() {
     setTrackModalVisible(true);
   }
 
-  // Manejador para subir archivos de audio locales directamente desde la máquina o dispositivo
-  function handleSelectLocalAudioFile() {
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'audio/*';
+  // Manejador para subir archivos de audio locales (Móvil y Web)
+  async function handleSelectLocalAudioFile() {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['audio/*'],
+        copyToCacheDirectory: true
+      });
 
-      input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+      if (result.canceled || !result.assets || !result.assets[0]) {
+        return;
+      }
 
-        try {
-          setUploadingAudio(true);
-          const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-          setUploadedFileName(file.name);
-          setUploadedFileSize(`${sizeMB} MB`);
+      const file = result.assets[0];
+      const sizeMB = ((file.size || 0) / (1024 * 1024)).toFixed(2);
+      setUploadedFileName(file.name);
+      setUploadedFileSize(`${sizeMB} MB`);
+      setUploadingAudio(true);
 
-          // Leer archivo como Base64
+      // Leer archivo como Base64
+      let base64Data = null;
+      if (Platform.OS === 'web' && file.file) {
+        base64Data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = async () => {
-            try {
-              const base64Data = reader.result;
-              const res = await apiRequest('/upload', {
-                method: 'POST',
-                body: {
-                  filename: file.name,
-                  base64: base64Data,
-                  mimeType: file.type || 'audio/mpeg'
-                }
-              });
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file.file);
+        });
+      } else {
+        const resBlob = await fetch(file.uri);
+        const blob = await resBlob.blob();
+        base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
 
-              setAudioUrl(res.url);
-              if (!title) {
-                // Auto-rellenar título con nombre de archivo limpio
-                const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
-                setTitle(cleanName);
-              }
-
-              notify('Audio subido exitosamente', `Archivo listo: ${file.name} (${sizeMB} MB).`, 'success');
-            } catch (uploadErr) {
-              notify('Error al subir audio', uploadErr.message, 'error');
-            } finally {
-              setUploadingAudio(false);
-            }
-          };
-        } catch (err) {
-          setUploadingAudio(false);
-          notify('Error de lectura', err.message, 'error');
+      const res = await apiRequest('/upload', {
+        method: 'POST',
+        body: {
+          filename: file.name,
+          base64: base64Data,
+          mimeType: file.mimeType || 'audio/mpeg'
         }
-      };
+      });
 
-      input.click();
-    } else {
-      // En entorno móvil nativo se ofrece el selector o preset
-      notify('Selector Móvil', 'Seleccionando preset o enlace remoto de audio.', 'info');
-      setUploadSourceMode('presets');
+      setAudioUrl(res.url);
+      if (!title) {
+        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+        setTitle(cleanName);
+      }
+
+      notify('Audio importado exitosamente', `${file.name} (${sizeMB} MB)`, 'success');
+    } catch (err) {
+      console.warn('Error al importar audio:', err);
+      notify('Error al importar audio', err.message, 'error');
+    } finally {
+      setUploadingAudio(false);
     }
   }
 
-  // Manejador para subir imagen de portada / carátula
-  function handleSelectCoverImage() {
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
+  // Manejador para subir imagen de portada / carátula (Móvil y Web)
+  async function handleSelectCoverImage() {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/*'],
+        copyToCacheDirectory: true
+      });
 
-      input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+      if (result.canceled || !result.assets || !result.assets[0]) {
+        return;
+      }
 
-        try {
+      const file = result.assets[0];
+      let base64Data = null;
+
+      if (Platform.OS === 'web' && file.file) {
+        base64Data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = async () => {
-            const res = await apiRequest('/upload', {
-              method: 'POST',
-              body: {
-                filename: file.name,
-                base64: reader.result,
-                mimeType: file.type || 'image/jpeg'
-              }
-            });
-            setCoverUrl(res.url);
-            notify('Arte de tapa subido', `Carátula guardada: ${file.name}.`, 'success');
-          };
-        } catch (err) {
-          notify('Error al subir carátula', err.message, 'error');
-        }
-      };
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file.file);
+        });
+      } else {
+        const resBlob = await fetch(file.uri);
+        const blob = await resBlob.blob();
+        base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
 
-      input.click();
+      const res = await apiRequest('/upload', {
+        method: 'POST',
+        body: {
+          filename: file.name,
+          base64: base64Data,
+          mimeType: file.mimeType || 'image/jpeg'
+        }
+      });
+
+      setCoverUrl(res.url);
+      notify('Arte de tapa subido', `Carátula: ${file.name}.`, 'success');
+    } catch (err) {
+      notify('Error al subir carátula', err.message, 'error');
     }
   }
 
