@@ -1,6 +1,7 @@
-// Cliente HTTP centralizado con resolucin dinmica de host y renovacin automtica de token.
+// Cliente HTTP centralizado con resolución dinámica de host y renovación automática de token.
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 export function getApiBaseUrl() {
   if (Platform.OS === 'web') {
@@ -9,8 +10,16 @@ export function getApiBaseUrl() {
     }
     return 'http://localhost:3000/api';
   }
-  // En mvil (Expo Go sobre Wi-Fi): conectar a la IP de la mquina de desarrollo
-  return 'http://192.168.100.11:3000/api';
+
+  // 1. Detección dinámica de IP del servidor de desarrollo (Expo Go / Metro)
+  const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
+  if (hostUri) {
+    const devHost = hostUri.split(':')[0];
+    if (devHost) return `http://${devHost}:3000/api`;
+  }
+
+  // 2. IP actual de la máquina de desarrollo en la red Wi-Fi
+  return 'http://10.0.2.106:3000/api';
 }
 
 let tokenUpdateListener = null;

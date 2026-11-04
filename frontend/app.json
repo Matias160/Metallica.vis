@@ -6,8 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
-      "package": "com.metallicavis.app",
-      "usesCleartextTraffic": true
+      "package": "com.metallicavis.app"
     },
     "extra": {
       "eas": {
@@ -15,6 +14,7 @@
       }
     },
     "plugins": [
+      "./plugins/withCleartextTraffic",
       "expo-asset",
       [
         "expo-splash-screen",
