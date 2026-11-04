@@ -6,7 +6,8 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "android": {
-      "package": "com.metallicavis.app"
+      "package": "com.metallicavis.app",
+      "usesCleartextTraffic": true
     },
     "extra": {
       "eas": {
