@@ -55,7 +55,7 @@ export default function LoginScreen({ navigation }) {
 
       const oauthEndpoints = {
         google: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=437755324140-6b352u957m6qlgujhr1jhb2gfk5sneac.apps.googleusercontent.com&response_type=token&scope=openid%20profile%20email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
-        spotify: 'https://accounts.spotify.com/authorize?client_id=demo_spotify_client_id&response_type=code&scope=user-read-email%20user-read-private&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
+        spotify: 'https://accounts.spotify.com/authorize?client_id=6ff899cf0e2c4954aa23517da1941e3f&response_type=code&scope=user-read-email%20user-read-private&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
         github: 'https://github.com/login/oauth/authorize?client_id=Ov23liYTETP2qRo6BQV5&scope=read:user%20user:email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis'
       };
 
