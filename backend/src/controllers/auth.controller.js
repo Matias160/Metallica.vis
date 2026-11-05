@@ -117,8 +117,8 @@ export async function me(req, res, next) {
 export async function socialLogin(req, res, next) {
   try {
     const { provider, providerId, email, displayName } = req.body;
-    if (!['google', 'facebook', 'github', 'apple'].includes(provider) || !providerId || !email) {
-      return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Proveedor (google, facebook, github o apple), ID social y email requeridos' } });
+    if (!['google', 'spotify', 'github', 'facebook', 'apple'].includes(provider) || !providerId || !email) {
+      return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Proveedor (google, spotify o github), ID social y email requeridos' } });
     }
 
     const connection = await pool.getConnection();

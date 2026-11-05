@@ -51,10 +51,12 @@ export const colors = {
   // Redes Sociales de Alta Gama
   google: '#ea4335',
   googleBg: '#2a1114',
-  facebook: '#1877f2',
-  facebookBg: '#0e2347',
+  spotify: '#1db954',
+  spotifyBg: '#082518',
   github: '#f8fafc',
   githubBg: '#1e232a',
+  facebook: '#1877f2',
+  facebookBg: '#0e2347',
   apple: '#f8fafc',
   appleBg: '#1e2538'
 };

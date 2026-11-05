@@ -55,8 +55,8 @@ export default function LoginScreen({ navigation }) {
 
       const oauthEndpoints = {
         google: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=437755324140-6b352u957m6qlgujhr1jhb2gfk5sneac.apps.googleusercontent.com&response_type=token&scope=openid%20profile%20email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
-        facebook: 'https://www.facebook.com/v19.0/dialog/oauth?client_id=demo_fb_app_id&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis&scope=email,public_profile',
-        github: 'https://github.com/login/oauth/authorize?client_id=demo_github_client_id&scope=read:user%20user:email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis'
+        spotify: 'https://accounts.spotify.com/authorize?client_id=demo_spotify_client_id&response_type=token&scope=user-read-email%20user-read-private&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
+        github: 'https://github.com/login/oauth/authorize?client_id=Ov23liYTETP2qRo6BQV5&scope=read:user%20user:email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis'
       };
 
       const targetUrl = oauthEndpoints[provider] || oauthEndpoints.google;
@@ -85,10 +85,10 @@ export default function LoginScreen({ navigation }) {
           email: 'usuario.google@gmail.com',
           name: 'Coleccionista Google'
         },
-        facebook: {
-          id: `fb_${Date.now()}`,
-          email: 'usuario.fb@facebook.com',
-          name: 'Coleccionista Facebook'
+        spotify: {
+          id: `sp_${Date.now()}`,
+          email: 'usuario.spotify@gmail.com',
+          name: 'Coleccionista Spotify'
         },
         github: {
           id: `gh_${Date.now()}`,
@@ -390,13 +390,13 @@ export default function LoginScreen({ navigation }) {
                 <Pressable
                   style={({ pressed }) => [
                     styles.socialBtn,
-                    { borderColor: colors.facebook, backgroundColor: colors.facebookBg },
+                    { borderColor: colors.spotify, backgroundColor: colors.spotifyBg },
                     pressed && { opacity: 0.8 }
                   ]}
-                  onPress={() => handleSocial('facebook')}
+                  onPress={() => handleSocial('spotify')}
                   disabled={loading}
                 >
-                  <Text style={[styles.socialText, { color: '#93c5fd' }]}>f Facebook</Text>
+                  <Text style={[styles.socialText, { color: colors.spotify }]}>🎧 Spotify</Text>
                 </Pressable>
 
                 <Pressable
