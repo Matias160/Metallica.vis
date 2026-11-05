@@ -3,7 +3,19 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-export function getApiBaseUrl() {
+export interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
+  token?: string;
+  body?: any;
+}
+
+export interface ApiErrorResponse {
+  error?: {
+    code?: string;
+    message?: string;
+  };
+}
+
+export function getApiBaseUrl(): string {
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined' && window.location?.hostname) {
       return `http://${window.location.hostname}:3000/api`;
@@ -12,7 +24,7 @@ export function getApiBaseUrl() {
   }
 
   // 1. Detección dinámica de IP del servidor de desarrollo (Expo Go / Metro)
-  const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
+  const hostUri = (Constants.expoConfig as any)?.hostUri || (Constants.manifest2 as any)?.extra?.expoGo?.debuggerHost;
   if (hostUri) {
     const devHost = hostUri.split(':')[0];
     if (devHost) return `http://${devHost}:3000/api`;
@@ -22,12 +34,14 @@ export function getApiBaseUrl() {
   return 'http://10.0.2.106:3000/api';
 }
 
-let tokenUpdateListener = null;
-export function setTokenUpdateListener(cb) {
+type TokenListener = (token: string | null) => void;
+let tokenUpdateListener: TokenListener | null = null;
+
+export function setTokenUpdateListener(cb: TokenListener): void {
   tokenUpdateListener = cb;
 }
 
-export async function apiRequest(path, options = {}) {
+export async function apiRequest<T = any>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const baseUrl = getApiBaseUrl();
   let currentToken = options.token;
 
@@ -41,7 +55,7 @@ export async function apiRequest(path, options = {}) {
     } catch {}
   }
 
-  const execute = async (tokenToUse) => {
+  const execute = async (tokenToUse?: string): Promise<Response> => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
     try {
@@ -60,26 +74,26 @@ export async function apiRequest(path, options = {}) {
     }
   };
 
-  let response;
+  let response: Response;
   try {
     response = await execute(currentToken);
-  } catch (netErr) {
+  } catch (netErr: any) {
     // Si la conexión fue reseteada o falló, intentar una vez más tras 300ms
     try {
       await new Promise((r) => setTimeout(r, 300));
       response = await execute(currentToken);
-    } catch (retryErr) {
+    } catch (retryErr: any) {
       const isAbort = retryErr.name === 'AbortError' || netErr.name === 'AbortError';
       const errMsg = isAbort
         ? 'El servidor tardó demasiado en responder (tiempo de espera agotado).'
         : `No se pudo conectar al servidor en ${baseUrl}. Verificá que el backend esté ejecutándose en la misma red Wi-Fi.`;
-      const err = new Error(errMsg);
+      const err: any = new Error(errMsg);
       err.originalError = retryErr;
       throw err;
     }
   }
 
-  let data = await response.json().catch(() => ({}));
+  let data: any = await response.json().catch(() => ({}));
 
   // Manejo transparente de token expirado (HTTP 401 / INVALID_TOKEN)
   if (response.status === 401 && (data.error?.code === 'INVALID_TOKEN' || data.error?.message?.includes('expir'))) {
@@ -93,7 +107,7 @@ export async function apiRequest(path, options = {}) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refreshToken: session.refreshToken })
           });
-          const refreshData = await refreshRes.json().catch(() => ({}));
+          const refreshData: any = await refreshRes.json().catch(() => ({}));
           if (refreshRes.ok && refreshData.accessToken) {
             session.accessToken = refreshData.accessToken;
             await AsyncStorage.setItem('metallica_session', JSON.stringify(session));
@@ -110,7 +124,7 @@ export async function apiRequest(path, options = {}) {
         }
       }
     } catch (refreshErr) {
-      console.warn('[apiRequest] Error renovando sesin:', refreshErr);
+      console.warn('[apiRequest] Error renovando sesión:', refreshErr);
     }
   }
 
@@ -118,5 +132,5 @@ export async function apiRequest(path, options = {}) {
     throw new Error(data.error?.message || 'No se pudo completar la solicitud');
   }
 
-  return data;
+  return data as T;
 }

@@ -1,9 +1,15 @@
-// Reproductor de audio universal para Web y Móvil (Expo).
+// Reproductor de audio universal para Web y Móvil (Expo) en TypeScript.
 // Utiliza HTML5 Audio en Web y expo-audio en entornos nativos (Android/iOS).
 import { Platform } from 'react-native';
 import { resolvePlayableAudioUri } from './offlineStorage';
 
-let createAudioPlayer = null;
+export interface SoundPlayResult {
+  success: boolean;
+  mode?: 'web' | 'expo-audio' | 'simulated';
+  error?: string;
+}
+
+let createAudioPlayer: any = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const expoAudio = require('expo-audio');
@@ -13,15 +19,13 @@ try {
 }
 
 class UniversalSoundPlayer {
-  constructor() {
-    this.currentWebAudio = null;
-    this.currentNativeSound = null;
-    this.onEndCallback = null;
-  }
+  private currentWebAudio: HTMLAudioElement | null = null;
+  private currentNativeSound: any = null;
+  private onEndCallback: (() => void) | null = null;
 
-  async play(uri, onEnd) {
+  async play(uri?: string | null, onEnd?: () => void): Promise<SoundPlayResult> {
     this.stop();
-    this.onEndCallback = onEnd;
+    this.onEndCallback = onEnd || null;
 
     let audioSource = uri || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
     try {
@@ -31,8 +35,8 @@ class UniversalSoundPlayer {
     // 1. Entorno Web: Usar HTML5 Audio estándar del navegador
     if (Platform.OS === 'web') {
       try {
-        if (typeof window !== 'undefined' && window.Audio) {
-          const audio = new window.Audio(audioSource);
+        if (typeof window !== 'undefined' && (window as any).Audio) {
+          const audio = new (window as any).Audio(audioSource) as HTMLAudioElement;
           audio.onended = () => {
             if (this.onEndCallback) this.onEndCallback();
           };
@@ -44,9 +48,9 @@ class UniversalSoundPlayer {
           this.currentWebAudio = audio;
           return { success: true, mode: 'web' };
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn('[SoundPlayer Web] Reproducción prevenida o fallida:', err);
-        return { success: false, error: err.message };
+        return { success: false, error: err?.message };
       }
     }
 
@@ -57,7 +61,7 @@ class UniversalSoundPlayer {
         this.currentNativeSound = player;
 
         if (typeof player.addListener === 'function') {
-          player.addListener('playbackStatusUpdate', (status) => {
+          player.addListener('playbackStatusUpdate', (status: any) => {
             if (status && status.didJustFinish) {
               if (this.onEndCallback) this.onEndCallback();
             }
@@ -69,7 +73,7 @@ class UniversalSoundPlayer {
         }
 
         return { success: true, mode: 'expo-audio' };
-      } catch (nativeErr) {
+      } catch (nativeErr: any) {
         console.warn('[SoundPlayer Native] Error con expo-audio:', nativeErr?.message);
       }
     }
@@ -84,7 +88,7 @@ class UniversalSoundPlayer {
     return { success: true, mode: 'simulated' };
   }
 
-  stop() {
+  stop(): void {
     if (this.currentWebAudio) {
       try {
         this.currentWebAudio.pause();

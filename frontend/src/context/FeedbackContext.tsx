@@ -1,13 +1,29 @@
 // Notificaciones flotantes in-app con micro-bordes de estudio y máxima legibilidad.
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState, ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-const FeedbackContext = createContext(null);
+export type FeedbackKind = 'info' | 'success' | 'error' | 'warning';
 
-export function FeedbackProvider({ children }) {
-  const [message, setMessage] = useState(null);
+export interface FeedbackMessage {
+  title: string;
+  detail?: string;
+  kind: FeedbackKind;
+}
 
-  const notify = useCallback((title, detail = '', kind = 'info') => {
+export interface FeedbackContextValue {
+  notify: (title: string, detail?: string, kind?: FeedbackKind) => void;
+  dismiss: () => void;
+}
+
+const FeedbackContext = createContext<FeedbackContextValue>({
+  notify: () => {},
+  dismiss: () => {}
+});
+
+export function FeedbackProvider({ children }: { children: ReactNode }) {
+  const [message, setMessage] = useState<FeedbackMessage | null>(null);
+
+  const notify = useCallback((title: string, detail: string = '', kind: FeedbackKind = 'info') => {
     setMessage({ title, detail, kind });
     // Auto-ocultar después de 5 segundos
     setTimeout(() => {
@@ -19,7 +35,7 @@ export function FeedbackProvider({ children }) {
 
   const value = useMemo(() => ({ notify, dismiss }), [notify, dismiss]);
 
-  const kindIcons = {
+  const kindIcons: Record<FeedbackKind, string> = {
     info: 'ℹ',
     success: '✓',
     error: '✕',
@@ -31,7 +47,7 @@ export function FeedbackProvider({ children }) {
       {children}
       {message ? (
         <Pressable onPress={dismiss} style={[styles.toast, styles[message.kind] || styles.info]}>
-          <View style={[styles.iconBadge, styles[`icon_${message.kind}`] || styles.icon_info]}>
+          <View style={[styles.iconBadge, styles[`icon_${message.kind}` as keyof typeof styles] || styles.icon_info]}>
             <Text style={styles.iconText}>{kindIcons[message.kind] || '●'}</Text>
           </View>
           <View style={styles.copy}>
@@ -45,7 +61,7 @@ export function FeedbackProvider({ children }) {
   );
 }
 
-export const useFeedback = () => useContext(FeedbackContext);
+export const useFeedback = (): FeedbackContextValue => useContext(FeedbackContext);
 
 const styles = StyleSheet.create({
   toast: {
