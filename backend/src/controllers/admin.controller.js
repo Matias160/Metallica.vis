@@ -59,6 +59,22 @@ export async function toggleUserStatus(req, res, next) {
   } catch (error) { next(error); }
 }
 
+export async function toggleTrackFeatured(req, res, next) {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query('SELECT id, title, is_featured FROM tracks WHERE id = ?', [id]);
+    if (!rows[0]) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Pista inexistente' } });
+
+    const newFeatured = !rows[0].is_featured;
+    await pool.query('UPDATE tracks SET is_featured = ? WHERE id = ?', [newFeatured, id]);
+
+    res.json({
+      message: `Pista “${rows[0].title}” ${newFeatured ? 'marcada como destacada' : 'removida de destacadas'}`,
+      isFeatured: newFeatured
+    });
+  } catch (error) { next(error); }
+}
+
 export async function getStats(_req, res, next) {
   try {
     const [[{ totalUsers }]] = await pool.query('SELECT COUNT(*) AS totalUsers FROM users');

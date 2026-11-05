@@ -85,6 +85,10 @@ export default function HomeScreen({ navigation }) {
 
       if (!matchesSearch) return false;
 
+      if (filterType === 'featured') {
+        return Boolean(t.is_featured);
+      }
+
       const trackPressing = pressings.find((p) => p.track_id === t.id);
       if (filterType === 'available') {
         return trackPressing && trackPressing.available_copies > 0;
@@ -167,6 +171,7 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.filtersScroll}>
             {[
               { id: 'all', label: `Todas (${tracks.length})` },
+              { id: 'featured', label: `★ Destacadas (${tracks.filter((t) => t.is_featured).length})` },
               { id: 'available', label: 'En Stock' },
               { id: 'verified', label: '✓ Sellos' }
             ].map((f) => (
@@ -245,7 +250,14 @@ export default function HomeScreen({ navigation }) {
                   </View>
 
                   <View style={styles.trackInfo}>
-                    <Text style={[styles.trackTitle, { color: palette.text }]}>{item.title}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={[styles.trackTitle, { color: palette.text }]}>{item.title}</Text>
+                      {item.is_featured ? (
+                        <View style={[styles.featuredTag, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]}>
+                          <Text style={[styles.featuredTagText, { color: palette.accent }]}>★ DESTACADA</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     <View style={styles.artistRow}>
                       <Text style={[styles.artistName, { color: palette.accent }]}>{item.artist_name}</Text>
                       {item.verified ? (
@@ -608,6 +620,17 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     borderWidth: 1
+  },
+  featuredTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1
+  },
+  featuredTagText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5
   },
   verifiedText: {
     fontSize: 10,

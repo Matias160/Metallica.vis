@@ -49,6 +49,7 @@ CREATE TABLE tracks (
   cover_url VARCHAR(500) NULL,
   duration_seconds INT UNSIGNED NULL,
   license_type VARCHAR(80) NOT NULL DEFAULT 'original',
+  is_featured BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (artist_id) REFERENCES artists(id)
 );

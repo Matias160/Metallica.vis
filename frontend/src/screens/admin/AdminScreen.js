@@ -26,22 +26,35 @@ export default function AdminScreen() {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [artists, setArtists] = useState([]);
+  const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userSearch, setUserSearch] = useState('');
 
   async function loadAdminData() {
     try {
-      const [statsData, usersData, artistsData] = await Promise.all([
+      const [statsData, usersData, artistsData, tracksData] = await Promise.all([
         apiRequest('/admin/stats', { token }),
         apiRequest('/admin/users', { token }),
-        apiRequest('/artists', { token })
+        apiRequest('/artists', { token }),
+        apiRequest('/tracks', { token })
       ]);
       setStats(statsData.stats || null);
       setUsers(usersData.users || []);
       setArtists(artistsData.artists || []);
+      setTracks(tracksData.tracks || []);
     } catch (err) {
       console.warn('Error cargando panel archivista:', err);
+    }
+  }
+
+  async function handleToggleFeaturedTrack(track) {
+    try {
+      const res = await apiRequest(`/admin/tracks/${track.id}/featured`, { method: 'PATCH', token });
+      notify(res.isFeatured ? 'Pista destacada' : 'Pista desmarcada', res.message, 'success');
+      await loadAdminData();
+    } catch (err) {
+      notify('Error al modificar pista', err.message, 'error');
     }
   }
 
@@ -231,6 +244,63 @@ export default function AdminScreen() {
                 )}
               </View>
             ))}
+
+            {/* Curaduría de Pistas y Canciones Destacadas */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionHeader, { color: palette.muted }]}>
+                CURADURÍA DE CATÁLOGO · CANCIONES DESTACADAS ({tracks.filter((t) => t.is_featured).length}/{tracks.length})
+              </Text>
+            </View>
+
+            {tracks.length === 0 ? (
+              <View style={[styles.rowCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                <Text style={[styles.rowSub, { color: palette.muted }]}>No hay pistas registradas en el máster todavía.</Text>
+              </View>
+            ) : (
+              tracks.map((t) => (
+                <View
+                  key={t.id}
+                  style={[
+                    styles.rowCard,
+                    { backgroundColor: palette.surface, borderColor: t.is_featured ? palette.accent : palette.border },
+                    t.is_featured && shadows.glowAccent
+                  ]}
+                >
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      {t.is_featured ? (
+                        <Text style={{ fontSize: 13, color: palette.accent }}>★</Text>
+                      ) : null}
+                      <Text style={[styles.rowTitle, { color: palette.text }]} numberOfLines={1}>
+                        {t.title}
+                      </Text>
+                    </View>
+                    <Text style={[styles.rowSub, { color: palette.muted }]} numberOfLines={1}>
+                      Sello: {t.artist_name} · Licencia: {t.license_type}
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    style={[
+                      styles.featuredBtn,
+                      t.is_featured
+                        ? { backgroundColor: palette.accent }
+                        : { backgroundColor: palette.surfaceLight, borderColor: palette.border, borderWidth: 1 }
+                    ]}
+                    onPress={() => handleToggleFeaturedTrack(t)}
+                  >
+                    <Text
+                      style={[
+                        styles.featuredBtnText,
+                        { color: t.is_featured ? palette.background : palette.textSecondary }
+                      ]}
+                    >
+                      {t.is_featured ? '★ DESTACADA' : '☆ DESTACAR'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ))
+            )}
 
             {/* Listado y Gestión de Usuarios */}
             <View style={styles.sectionHeaderRow}>
@@ -590,5 +660,17 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     padding: 0
+  },
+  featuredBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  featuredBtnText: {
+    fontWeight: '900',
+    fontSize: 10,
+    letterSpacing: 0.5
   }
 });
