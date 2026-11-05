@@ -1,4 +1,5 @@
-// Punto de entrada: combina navegación, sesión, tema, capas 3D y mensajes no intrusivos.
+// Punto de entrada: combina navegación, sesión, tema, capas 3D y mensajes no intrusivos en TypeScript.
+import React from 'react';
 import { Platform, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -17,7 +18,7 @@ if (Platform.OS === 'web') {
   }
 }
 
-function ThemedApp() {
+function ThemedApp(): React.JSX.Element {
   const { isDark } = useTheme();
   return (
     <>
@@ -33,13 +34,13 @@ function ThemedApp() {
   );
 }
 
-function RootNavigator() {
+function RootNavigator(): React.JSX.Element | null {
   const { user, loading } = useAuth();
   if (loading) return null;
   return user ? <MainStack /> : <AuthStack />;
 }
 
-export default function App() {
+export default function App(): React.JSX.Element {
   return (
     <SafeAreaProvider>
       <ThemeProvider>

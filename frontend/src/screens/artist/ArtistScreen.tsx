@@ -1,5 +1,5 @@
-// Estudio de artista: ABML de catálogo, subida de archivos de audio locales, presets y acuñación de tiradas.
-import { useEffect, useState } from 'react';
+// Estudio de artista: ABML de catálogo, subida de archivos de audio locales, presets y acuñación de tiradas en TypeScript.
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -21,6 +21,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { useTheme } from '../../context/ThemeContext';
 import { shadows } from '../../theme/colors';
+import { Track, Artist } from '../../types';
 
 // Presets de demostración de audio máster analógico
 const AUDIO_PRESETS = [
@@ -44,20 +45,20 @@ const AUDIO_PRESETS = [
   }
 ];
 
-export default function ArtistScreen() {
+export default function ArtistScreen(): React.JSX.Element {
   const { token, user } = useAuth();
   const { palette, isDark, toggleTheme } = useTheme();
   const { notify } = useFeedback();
 
-  const [tracks, setTracks] = useState([]);
-  const [artists, setArtists] = useState([]);
-  const [myArtist, setMyArtist] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [myArtist, setMyArtist] = useState<Artist | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Modal para Crear / Editar Pista
-  const [trackModalVisible, setTrackModalVisible] = useState(false);
-  const [editingTrack, setEditingTrack] = useState(null);
+  const [trackModalVisible, setTrackModalVisible] = useState<boolean>(false);
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [audioUrl, setAudioUrl] = useState('');

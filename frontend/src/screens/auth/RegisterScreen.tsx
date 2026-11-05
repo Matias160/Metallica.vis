@@ -1,5 +1,5 @@
-// Formulario para crear una cuenta con selector interactivo de rol inicial.
-import { useState } from 'react';
+// Formulario para crear una cuenta con selector interactivo de rol inicial en TypeScript.
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,8 +15,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { colors, shadows } from '../../theme/colors';
+import { UserRole } from '../../types';
 
-const ROLES = [
+interface RoleOption {
+  id: UserRole;
+  label: string;
+  desc: string;
+}
+
+const ROLES: RoleOption[] = [
   {
     id: 'collector',
     label: 'Coleccionista',
@@ -29,18 +36,18 @@ const ROLES = [
   }
 ];
 
-export default function RegisterScreen({ navigation }) {
+export default function RegisterScreen({ navigation }: { navigation: any }): React.JSX.Element {
   const { register } = useAuth();
   const { notify } = useFeedback();
 
-  const [displayName, setDisplayName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState('collector');
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [focusedInput, setFocusedInput] = useState(null);
+  const [displayName, setDisplayName] = useState<string>('');
+  const [username, setUsername] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [selectedRole, setSelectedRole] = useState<UserRole>('collector');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isEmailValid = email.trim() === '' || emailRegex.test(email.trim());
@@ -48,7 +55,7 @@ export default function RegisterScreen({ navigation }) {
   const hasLetterAndNumber = /(?=.*[a-zA-Z])(?=.*\d)/.test(password);
   const isPasswordSecure = isPasswordLong && hasLetterAndNumber;
 
-  async function handleRegister() {
+  async function handleRegister(): Promise<void> {
     setErrorMsg('');
     if (!displayName.trim() || !username.trim() || !email.trim() || !password) {
       setErrorMsg('Por favor completá todos los campos requeridos.');
@@ -71,9 +78,9 @@ export default function RegisterScreen({ navigation }) {
     try {
       setLoading(true);
       await register(cleanUsername, email.trim().toLowerCase(), password, displayName.trim(), selectedRole);
-    } catch (err) {
-      setErrorMsg(err.message || 'Error al registrar la cuenta');
-      notify('No se pudo crear la cuenta', err.message, 'error');
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Error al registrar la cuenta');
+      notify('No se pudo crear la cuenta', err?.message, 'error');
     } finally {
       setLoading(false);
     }

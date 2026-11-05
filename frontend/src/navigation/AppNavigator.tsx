@@ -1,4 +1,5 @@
-// Define la navegación pública y privada con soporte para Modo Museo, Estudio y Admin.
+// Define la navegación pública y privada con soporte para Modo Museo, Estudio y Admin en TypeScript.
+import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StyleSheet, Text, View } from 'react-native';
@@ -16,7 +17,7 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 const Stack = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
 
-export function AuthStack() {
+export function AuthStack(): React.JSX.Element {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
@@ -25,7 +26,13 @@ export function AuthStack() {
   );
 }
 
-function TabIcon({ symbol, focused, color }) {
+interface TabIconProps {
+  symbol: string;
+  focused: boolean;
+  color: string;
+}
+
+function TabIcon({ symbol, focused, color }: TabIconProps): React.JSX.Element {
   return (
     <View style={navStyles.iconWrap}>
       <Text style={[navStyles.iconSymbol, { color: focused ? color : '#64748b' }]}>
@@ -36,7 +43,7 @@ function TabIcon({ symbol, focused, color }) {
   );
 }
 
-export function MainStack() {
+export function MainStack(): React.JSX.Element {
   const { user } = useAuth();
   const { palette } = useTheme();
   const roles = user?.roles || [];

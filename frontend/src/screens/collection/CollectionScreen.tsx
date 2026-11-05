@@ -1,5 +1,5 @@
-// Colección personal: estantería/vitrina digital, casetes, vinilos, escaneo QR y degradación analógica.
-import { useEffect, useMemo, useRef, useState } from 'react';
+// Colección personal: estantería/vitrina digital, casetes, vinilos, escaneo QR y degradación analógica en TypeScript.
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -23,41 +23,42 @@ import QrCodeModal from '../../components/QrCodeModal';
 import QrScannerModal from '../../components/QrScannerModal';
 import { shadows } from '../../theme/colors';
 import { downloadTrackOffline, getOfflineTracksMap, removeTrackOffline } from '../../utils/offlineStorage';
+import { Copy } from '../../types';
 
-export default function CollectionScreen() {
+export default function CollectionScreen(): React.JSX.Element {
   const { token, user } = useAuth();
   const { palette, isDark, toggleTheme } = useTheme();
   const { notify } = useFeedback();
 
-  const [copies, setCopies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [playingId, setPlayingId] = useState(null);
+  const [copies, setCopies] = useState<Copy[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [playingId, setPlayingId] = useState<number | null>(null);
 
   // Selector de vista: 'showcase' (vitrina/estantería) o 'list' (lista detallada)
-  const [viewMode, setViewMode] = useState('showcase');
-  const [formatFilter, setFormatFilter] = useState('all'); // 'all', 'cassette', 'vinyl', 'special'
+  const [viewMode, setViewMode] = useState<'showcase' | 'list'>('showcase');
+  const [formatFilter, setFormatFilter] = useState<'all' | 'cassette' | 'vinyl' | 'special'>('all');
 
   // Inspección de Vitrina (item seleccionado)
-  const [inspectedCopy, setInspectedCopy] = useState(null);
+  const [inspectedCopy, setInspectedCopy] = useState<Copy | null>(null);
 
   // Modales de Código QR y Escáner QR
-  const [qrModalCopy, setQrModalCopy] = useState(null);
-  const [scannerVisible, setScannerVisible] = useState(false);
-  const [offlineMap, setOfflineMap] = useState({});
-  const [downloadingId, setDownloadingId] = useState(null);
+  const [qrModalCopy, setQrModalCopy] = useState<Copy | null>(null);
+  const [scannerVisible, setScannerVisible] = useState<boolean>(false);
+  const [offlineMap, setOfflineMap] = useState<Record<string, any>>({});
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   // Dubbing state
-  const [dubModalVisible, setDubModalVisible] = useState(false);
-  const [selectedCopyForDub, setSelectedCopyForDub] = useState(null);
-  const [recipientUserId, setRecipientUserId] = useState('');
-  const [dubbing, setDubbing] = useState(false);
+  const [dubModalVisible, setDubModalVisible] = useState<boolean>(false);
+  const [selectedCopyForDub, setSelectedCopyForDub] = useState<Copy | null>(null);
+  const [recipientUserId, setRecipientUserId] = useState<string>('');
+  const [dubbing, setDubbing] = useState<boolean>(false);
 
   // Lineage state
-  const [lineageModalVisible, setLineageModalVisible] = useState(false);
-  const [lineageData, setLineageData] = useState([]);
-  const [loadingLineage, setLoadingLineage] = useState(false);
-  const [selectedCopyForLineage, setSelectedCopyForLineage] = useState(null);
+  const [lineageModalVisible, setLineageModalVisible] = useState<boolean>(false);
+  const [lineageData, setLineageData] = useState<any[]>([]);
+  const [loadingLineage, setLoadingLineage] = useState<boolean>(false);
+  const [selectedCopyForLineage, setSelectedCopyForLineage] = useState<Copy | null>(null);
 
   const spin = useRef(new Animated.Value(0)).current;
 

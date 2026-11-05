@@ -1,5 +1,5 @@
-// Catálogo oficial: exploración de pistas masterizadas, tiradas físicas, escáner QR y modo día/noche.
-import { useEffect, useMemo, useState } from 'react';
+// Catálogo oficial: exploración de pistas masterizadas, tiradas físicas, escáner QR y modo día/noche en TypeScript.
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -17,20 +17,21 @@ import { useFeedback } from '../../context/FeedbackContext';
 import { useTheme } from '../../context/ThemeContext';
 import QrScannerModal from '../../components/QrScannerModal';
 import { shadows } from '../../theme/colors';
+import { Track } from '../../types';
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen({ navigation }: { navigation: any }): React.JSX.Element {
   const { token, user } = useAuth();
   const { palette, isDark, toggleTheme } = useTheme();
   const { notify } = useFeedback();
 
-  const [tracks, setTracks] = useState([]);
-  const [pressings, setPressings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [claimingId, setClaimingId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [scannerVisible, setScannerVisible] = useState(false);
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [pressings, setPressings] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [claimingId, setClaimingId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterType, setFilterType] = useState<string>('all');
+  const [scannerVisible, setScannerVisible] = useState<boolean>(false);
 
   async function loadData() {
     try {

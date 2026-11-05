@@ -1,5 +1,5 @@
-// Panel de control archivista: telemetría analógica, moderación de sellos y administración de roles.
-import { useEffect, useState } from 'react';
+// Panel de control archivista: telemetría analógica, moderación de sellos y administración de roles en TypeScript.
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,18 +18,19 @@ import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { useTheme } from '../../context/ThemeContext';
 import { shadows } from '../../theme/colors';
+import { SystemStats, User, Artist, Track } from '../../types';
 
-export default function AdminScreen() {
+export default function AdminScreen(): React.JSX.Element {
   const { token } = useAuth();
   const { palette, isDark, toggleTheme } = useTheme();
   const { notify } = useFeedback();
-  const [stats, setStats] = useState(null);
-  const [users, setUsers] = useState([]);
-  const [artists, setArtists] = useState([]);
-  const [tracks, setTracks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [userSearch, setUserSearch] = useState('');
+  const [stats, setStats] = useState<SystemStats | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [userSearch, setUserSearch] = useState<string>('');
 
   async function loadAdminData() {
     try {

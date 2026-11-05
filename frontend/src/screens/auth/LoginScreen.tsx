@@ -1,5 +1,5 @@
-// Pantalla de acceso con diseño de consola de audio de alta fidelidad y accesos directos por rol.
-import { useState } from 'react';
+// Pantalla de acceso con diseño de consola de audio de alta fidelidad y accesos directos por rol en TypeScript.
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -20,18 +20,18 @@ import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { colors, shadows } from '../../theme/colors';
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen({ navigation }: { navigation: any }): React.JSX.Element {
   const { width } = useWindowDimensions();
   const wide = width >= 960;
   const { login, socialLogin } = useAuth();
   const { notify } = useFeedback();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [focusedInput, setFocusedInput] = useState(null);
-  const [showOAuthInfo, setShowOAuthInfo] = useState(false);
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [showOAuthInfo, setShowOAuthInfo] = useState<boolean>(false);
 
   async function submit() {
     setErrorMsg('');

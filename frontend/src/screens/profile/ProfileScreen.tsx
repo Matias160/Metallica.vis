@@ -1,5 +1,5 @@
-// Perfil del miembro, sincronización de permisos y selector de apariencia de estudio.
-import { useState } from 'react';
+// Perfil del miembro, sincronización de permisos y selector de apariencia de estudio en TypeScript.
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,7 +20,13 @@ import { useFeedback } from '../../context/FeedbackContext';
 import { useTheme } from '../../context/ThemeContext';
 import { colors, shadows } from '../../theme/colors';
 
-const AVATAR_PRESETS = [
+export interface AvatarPreset {
+  id: string;
+  name: string;
+  uri: string;
+}
+
+const AVATAR_PRESETS: AvatarPreset[] = [
   { id: 'cassette', name: 'Cassette Cromo', uri: 'https://images.unsplash.com/photo-1542208998-f6dbbb27a72f?w=180&auto=format&fit=crop&q=80' },
   { id: 'vinyl', name: 'Vinilo Master', uri: 'https://images.unsplash.com/photo-1603048588665-791ca8aea617?w=180&auto=format&fit=crop&q=80' },
   { id: 'amp', name: 'Amplificador', uri: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=180&auto=format&fit=crop&q=80' },
@@ -28,18 +34,18 @@ const AVATAR_PRESETS = [
   { id: 'reel', name: 'Carrete Reel', uri: 'https://images.unsplash.com/photo-1520523839898-507125cd53c1?w=180&auto=format&fit=crop&q=80' }
 ];
 
-export default function ProfileScreen() {
+export default function ProfileScreen(): React.JSX.Element {
   const { user, refreshUser, updateProfile, logout } = useAuth();
   const { notify } = useFeedback();
   const { isDark, palette, toggleTheme } = useTheme();
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [displayName, setDisplayName] = useState(user?.display_name || '');
-  const [username, setUsername] = useState(user?.username || '');
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
-  const [saving, setSaving] = useState(false);
-  const [editError, setEditError] = useState('');
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [displayName, setDisplayName] = useState<string>(user?.displayName || (user as any)?.display_name || '');
+  const [username, setUsername] = useState<string>(user?.username || '');
+  const [avatarUrl, setAvatarUrl] = useState<string>(user?.avatarUrl || (user as any)?.avatar_url || '');
+  const [saving, setSaving] = useState<boolean>(false);
+  const [editError, setEditError] = useState<string>('');
+  const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
 
   function openEditModal() {
     setDisplayName(user?.display_name || '');

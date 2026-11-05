@@ -1,9 +1,23 @@
-// Estado global del tema con persistencia y paletas de alta fidelidad.
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+// Estado global del tema con persistencia y paletas de alta fidelidad en TypeScript.
+import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '../theme/colors';
+import { colors, Colors } from '../theme/colors';
 
-const ThemeContext = createContext(null);
+export type ThemeMode = 'dark' | 'light';
+
+export interface ThemeContextValue {
+  mode: ThemeMode;
+  isDark: boolean;
+  palette: any;
+  toggleTheme: () => Promise<void>;
+}
+
+const ThemeContext = createContext<ThemeContextValue>({
+  mode: 'dark',
+  isDark: true,
+  palette: colors,
+  toggleTheme: async () => {}
+});
 
 const palettes = {
   dark: colors,
@@ -41,17 +55,17 @@ const palettes = {
   }
 };
 
-export function ThemeProvider({ children }) {
-  const [mode, setMode] = useState('dark');
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [mode, setMode] = useState<ThemeMode>('dark');
 
   useEffect(() => {
     AsyncStorage.getItem('metallica_theme').then((saved) => {
-      if (saved === 'light' || saved === 'dark') setMode(saved);
+      if (saved === 'light' || saved === 'dark') setMode(saved as ThemeMode);
     });
   }, []);
 
-  const toggleTheme = async () => {
-    const next = mode === 'dark' ? 'light' : 'dark';
+  const toggleTheme = async (): Promise<void> => {
+    const next: ThemeMode = mode === 'dark' ? 'light' : 'dark';
     setMode(next);
     await AsyncStorage.setItem('metallica_theme', next);
   };
@@ -69,4 +83,4 @@ export function ThemeProvider({ children }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
-export const useTheme = () => useContext(ThemeContext);
+export const useTheme = (): ThemeContextValue => useContext(ThemeContext);

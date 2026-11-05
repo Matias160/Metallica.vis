@@ -1,11 +1,11 @@
-// Reproductor visual analógico: deck de cintas y tocadiscos con estética de estudio.
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+// Reproductor visual analógico: deck de cintas y tocadiscos con estética de estudio en TypeScript.
+import React, { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, shadows } from '../../theme/colors';
 
-export default function PlayerScreen() {
-  const [isPlaying, setIsPlaying] = useState(false);
+export default function PlayerScreen(): React.JSX.Element {
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   return (
     <SafeAreaView style={styles.container}>

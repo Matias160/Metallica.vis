@@ -1,5 +1,5 @@
-// Modo Museo: vista pública y cuidada para exhibir colecciones destacadas, artistas y piezas históricas.
-import { useState } from 'react';
+// Modo Museo: vista pública y cuidada para exhibir colecciones destacadas, artistas y piezas históricas en TypeScript.
+import React, { useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -15,8 +15,21 @@ import { useTheme } from '../../context/ThemeContext';
 import QrScannerModal from '../../components/QrScannerModal';
 import { shadows } from '../../theme/colors';
 
+export interface MuseumPiece {
+  id: string;
+  title: string;
+  year: string;
+  category: string;
+  type: string;
+  curatorialNotes: string;
+  soundSpec: string;
+  curatorBadge: string;
+  authenticityHash: string;
+  audioUrl: string;
+}
+
 // Piezas históricas preservadas en el museo
-const MUSEUM_PIECES = [
+const MUSEUM_PIECES: MuseumPiece[] = [
   {
     id: 'm1',
     title: "No Life 'Til Leather (Original 1982 Demo)",

@@ -1,5 +1,5 @@
-// Modal de Escaneo y Validación Criptográfica de Códigos QR para Casetes y Vinilos.
-import { useState } from 'react';
+// Modal de Escaneo y Validación Criptográfica de Códigos QR para Casetes y Vinilos en TypeScript.
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -16,14 +16,20 @@ import { useFeedback } from '../context/FeedbackContext';
 import { useTheme } from '../context/ThemeContext';
 import { shadows } from '../theme/colors';
 
-export default function QrScannerModal({ visible, onClose, onOpenTape }) {
+export interface QrScannerModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onOpenTape?: (copy: any) => void;
+}
+
+export default function QrScannerModal({ visible, onClose, onOpenTape }: QrScannerModalProps): React.JSX.Element {
   const { palette } = useTheme();
   const { notify } = useFeedback();
 
-  const [inputCode, setInputCode] = useState('');
-  const [verifying, setVerifying] = useState(false);
-  const [certificateData, setCertificateData] = useState(null);
-  const [scanLaser] = useState(new Animated.Value(0));
+  const [inputCode, setInputCode] = useState<string>('');
+  const [verifying, setVerifying] = useState<boolean>(false);
+  const [certificateData, setCertificateData] = useState<any>(null);
+  const [scanLaser] = useState<Animated.Value>(new Animated.Value(0));
 
   // Animación continua del láser de escaneo
   const startLaserAnimation = () => {
