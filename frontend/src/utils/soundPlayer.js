@@ -1,6 +1,7 @@
 // Reproductor de audio universal para Web y Móvil (Expo).
 // Utiliza HTML5 Audio en Web y expo-audio en entornos nativos (Android/iOS).
 import { Platform } from 'react-native';
+import { resolvePlayableAudioUri } from './offlineStorage';
 
 let createAudioPlayer = null;
 try {
@@ -22,7 +23,10 @@ class UniversalSoundPlayer {
     this.stop();
     this.onEndCallback = onEnd;
 
-    const audioSource = uri || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+    let audioSource = uri || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+    try {
+      audioSource = await resolvePlayableAudioUri(audioSource);
+    } catch {}
 
     // 1. Entorno Web: Usar HTML5 Audio estándar del navegador
     if (Platform.OS === 'web') {

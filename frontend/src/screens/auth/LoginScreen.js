@@ -54,7 +54,7 @@ export default function LoginScreen({ navigation }) {
       setErrorMsg('');
 
       const oauthEndpoints = {
-        google: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=74182928374-demo.apps.googleusercontent.com&response_type=token&scope=openid%20profile%20email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
+        google: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=437755324140-6b352u957m6qlgujhr1jhb2gfk5sneac.apps.googleusercontent.com&response_type=token&scope=openid%20profile%20email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
         facebook: 'https://www.facebook.com/v19.0/dialog/oauth?client_id=demo_fb_app_id&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis&scope=email,public_profile',
         apple: 'https://appleid.apple.com/auth/authorize?client_id=com.matirivas.metallicavis&response_type=code%20id_token&scope=name%20email&response_mode=form_post'
       };

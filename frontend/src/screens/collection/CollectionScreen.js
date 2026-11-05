@@ -22,6 +22,7 @@ import { useTheme } from '../../context/ThemeContext';
 import QrCodeModal from '../../components/QrCodeModal';
 import QrScannerModal from '../../components/QrScannerModal';
 import { shadows } from '../../theme/colors';
+import { downloadTrackOffline, getOfflineTracksMap, removeTrackOffline } from '../../utils/offlineStorage';
 
 export default function CollectionScreen() {
   const { token, user } = useAuth();
@@ -43,6 +44,8 @@ export default function CollectionScreen() {
   // Modales de Código QR y Escáner QR
   const [qrModalCopy, setQrModalCopy] = useState(null);
   const [scannerVisible, setScannerVisible] = useState(false);
+  const [offlineMap, setOfflineMap] = useState({});
+  const [downloadingId, setDownloadingId] = useState(null);
 
   // Dubbing state
   const [dubModalVisible, setDubModalVisible] = useState(false);
@@ -60,10 +63,18 @@ export default function CollectionScreen() {
 
   async function reload() {
     try {
-      const data = await apiRequest('/collection', { token });
+      const [data, offlineData] = await Promise.all([
+        apiRequest('/collection', { token }),
+        getOfflineTracksMap()
+      ]);
       setCopies(data.copies || []);
+      setOfflineMap(offlineData || {});
     } catch (e) {
       console.warn('Error cargando colección:', e);
+      try {
+        const offlineData = await getOfflineTracksMap();
+        setOfflineMap(offlineData || {});
+      } catch {}
     }
   }
 
@@ -83,6 +94,39 @@ export default function CollectionScreen() {
     setRefreshing(false);
   }
 
+  async function handleToggleOffline(copy) {
+    if (!copy?.audio_url) {
+      notify('Audio no disponible', 'Esta copia no tiene archivo de audio asociado.', 'warning');
+      return;
+    }
+
+    const isDownloaded = Boolean(offlineMap[copy.audio_url]);
+
+    if (isDownloaded) {
+      try {
+        await removeTrackOffline(copy.audio_url);
+        const updated = await getOfflineTracksMap();
+        setOfflineMap(updated);
+        notify('Descarga eliminada', 'La copia fue removida del almacenamiento local.', 'info');
+      } catch (err) {
+        notify('Error al eliminar', err.message, 'error');
+      }
+      return;
+    }
+
+    try {
+      setDownloadingId(copy.id);
+      await downloadTrackOffline(copy);
+      const updated = await getOfflineTracksMap();
+      setOfflineMap(updated);
+      notify('¡Descarga completa!', `“${copy.track_title || 'Cinta'}” guardada para reproducir sin conexión.`, 'success');
+    } catch (err) {
+      notify('No se pudo descargar', err.message, 'error');
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   async function play(copy) {
     try {
       soundPlayer.stop();
@@ -91,8 +135,6 @@ export default function CollectionScreen() {
         setPlayingId(null);
         return;
       }
-
-      const data = await apiRequest(`/copies/${copy.id}/play`, { method: 'POST', token });
 
       setPlayingId(copy.id);
       Animated.loop(
@@ -104,12 +146,18 @@ export default function CollectionScreen() {
         setPlayingId((curr) => (curr === copy.id ? null : curr));
       });
 
-      notify(
-        'Reproducción en cabezal',
-        `Condición de cinta: ${data.conditionValue}%. Desgaste acumulado: ${data.degradationApplied}%.`,
-        'success'
-      );
-      await reload();
+      // Registrar desgaste en backend (tolerante a modo offline sin internet)
+      try {
+        const data = await apiRequest(`/copies/${copy.id}/play`, { method: 'POST', token });
+        notify(
+          'Reproducción en cabezal',
+          `Condición: ${data.conditionValue}%. Desgaste acumulado: ${data.degradationApplied}%.`,
+          'success'
+        );
+        await reload();
+      } catch (netErr) {
+        notify('Modo Offline Activo', 'Reproduciendo pieza directamente desde la memoria interna.', 'info');
+      }
     } catch (error) {
       soundPlayer.stop();
       setPlayingId(null);
@@ -586,6 +634,30 @@ export default function CollectionScreen() {
                   </Pressable>
 
                   <Pressable
+                    style={[
+                      styles.actionBtn,
+                      offlineMap[item.audio_url]
+                        ? { backgroundColor: palette.successMuted, borderColor: palette.successBorder }
+                        : { backgroundColor: palette.surfaceLight, borderColor: palette.border }
+                    ]}
+                    onPress={() => handleToggleOffline(item)}
+                    disabled={downloadingId === item.id}
+                  >
+                    {downloadingId === item.id ? (
+                      <ActivityIndicator size="small" color={palette.accent} />
+                    ) : (
+                      <Text
+                        style={[
+                          styles.actionBtnText,
+                          { color: offlineMap[item.audio_url] ? palette.success : palette.textSecondary }
+                        ]}
+                      >
+                        {offlineMap[item.audio_url] ? '✓ OFFLINE' : '⬇ OFFLINE'}
+                      </Text>
+                    )}
+                  </Pressable>
+
+                  <Pressable
                     style={[styles.actionBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
                     onPress={() => openLineage(item)}
                   >
@@ -707,6 +779,32 @@ export default function CollectionScreen() {
                     <Text style={[styles.inspectedQrText, { color: palette.cyan }]}>
                       ⛶ VER QR & STICKER
                     </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={[
+                      styles.inspectedOfflineBtn,
+                      offlineMap[inspectedCopy.audio_url]
+                        ? { backgroundColor: palette.successMuted, borderColor: palette.successBorder }
+                        : { backgroundColor: palette.surfaceLight, borderColor: palette.border }
+                    ]}
+                    onPress={() => handleToggleOffline(inspectedCopy)}
+                    disabled={downloadingId === inspectedCopy.id}
+                  >
+                    {downloadingId === inspectedCopy.id ? (
+                      <ActivityIndicator size="small" color={palette.accent} />
+                    ) : (
+                      <Text
+                        style={[
+                          styles.inspectedOfflineText,
+                          { color: offlineMap[inspectedCopy.audio_url] ? palette.success : palette.textSecondary }
+                        ]}
+                      >
+                        {offlineMap[inspectedCopy.audio_url]
+                          ? '✓ GUARDADO EN MEMORIA (OFFLINE)'
+                          : '⬇ DESCARGAR PARA ESCUCHAR SIN CONEXIÓN'}
+                      </Text>
+                    )}
                   </Pressable>
 
                   <View style={styles.inspectedSubActions}>
@@ -1524,6 +1622,18 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   inspectedQrText: {
+    fontWeight: '900',
+    fontSize: 11,
+    letterSpacing: 0.8
+  },
+  inspectedOfflineBtn: {
+    borderWidth: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  inspectedOfflineText: {
     fontWeight: '900',
     fontSize: 11,
     letterSpacing: 0.8
