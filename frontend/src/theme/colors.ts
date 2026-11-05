@@ -59,7 +59,9 @@ export const colors = {
   facebookBg: '#0e2347',
   apple: '#f8fafc',
   appleBg: '#1e2538'
-};
+} as const;
+
+export type Colors = typeof colors;
 
 export const shadows = {
   sm: {
@@ -104,4 +106,6 @@ export const shadows = {
     shadowRadius: 12,
     elevation: 5
   }
-};
+} as const;
+
+export type Shadows = typeof shadows;
