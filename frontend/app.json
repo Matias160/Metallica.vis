@@ -2,6 +2,7 @@
   "expo": {
     "name": "metallica.vis",
     "slug": "metallica-vis",
+    "scheme": "metallica-vis",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",

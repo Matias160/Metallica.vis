@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
+
+WebBrowser.maybeCompleteAuthSession();
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { colors, shadows } from '../../theme/colors';
@@ -75,6 +77,10 @@ export default function LoginScreen({ navigation }) {
           await WebBrowser.openAuthSessionAsync(targetUrl, redirectUrl);
         } catch {
           await WebBrowser.openBrowserAsync(targetUrl);
+        } finally {
+          try {
+            await WebBrowser.dismissBrowser();
+          } catch {}
         }
       }
 
