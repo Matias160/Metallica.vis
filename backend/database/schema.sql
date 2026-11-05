@@ -120,7 +120,7 @@ CREATE TABLE refresh_tokens (
 CREATE TABLE social_accounts (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id BIGINT UNSIGNED NOT NULL,
-  provider ENUM('google', 'facebook', 'apple') NOT NULL,
+  provider VARCHAR(50) NOT NULL,
   provider_account_id VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (provider, provider_account_id),

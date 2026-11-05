@@ -56,10 +56,11 @@ export default function LoginScreen({ navigation }) {
       const oauthEndpoints = {
         google: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=437755324140-6b352u957m6qlgujhr1jhb2gfk5sneac.apps.googleusercontent.com&response_type=token&scope=openid%20profile%20email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
         facebook: 'https://www.facebook.com/v19.0/dialog/oauth?client_id=demo_fb_app_id&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis&scope=email,public_profile',
-        apple: 'https://appleid.apple.com/auth/authorize?client_id=com.matirivas.metallicavis&response_type=code%20id_token&scope=name%20email&response_mode=form_post'
+        github: 'https://github.com/login/oauth/authorize?client_id=demo_github_client_id&scope=read:user%20user:email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis'
       };
 
       const targetUrl = oauthEndpoints[provider] || oauthEndpoints.google;
+      const redirectUrl = 'https://auth.expo.io/@matirivas/metallica-vis';
 
       // 1. Abrir ventana emergente en la web del proveedor oficial
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -69,8 +70,12 @@ export default function LoginScreen({ navigation }) {
         const top = (window.innerHeight - height) / 2;
         window.open(targetUrl, `oauth_${provider}`, `width=${width},height=${height},top=${top},left=${left}`);
       } else {
-        // En celular, abrir la ventana nativa (Chrome Custom Tab / Safari View Controller)
-        await WebBrowser.openBrowserAsync(targetUrl);
+        // En celular, abrir con openAuthSessionAsync para interceptar el callback y auto-cerrar la pestaña
+        try {
+          await WebBrowser.openAuthSessionAsync(targetUrl, redirectUrl);
+        } catch {
+          await WebBrowser.openBrowserAsync(targetUrl);
+        }
       }
 
       // 2. Conectar identidad OAuth con el backend
@@ -85,10 +90,10 @@ export default function LoginScreen({ navigation }) {
           email: 'usuario.fb@facebook.com',
           name: 'Coleccionista Facebook'
         },
-        apple: {
-          id: `apple_${Date.now()}`,
-          email: 'usuario.apple@icloud.com',
-          name: 'Coleccionista Apple'
+        github: {
+          id: `gh_${Date.now()}`,
+          email: 'usuario.github@gmail.com',
+          name: 'Coleccionista GitHub'
         }
       };
 
@@ -397,13 +402,13 @@ export default function LoginScreen({ navigation }) {
                 <Pressable
                   style={({ pressed }) => [
                     styles.socialBtn,
-                    { borderColor: colors.border, backgroundColor: colors.appleBg },
+                    { borderColor: '#475569', backgroundColor: colors.githubBg },
                     pressed && { opacity: 0.8 }
                   ]}
-                  onPress={() => handleSocial('apple')}
+                  onPress={() => handleSocial('github')}
                   disabled={loading}
                 >
-                  <Text style={[styles.socialText, { color: colors.apple }]}> Apple</Text>
+                  <Text style={[styles.socialText, { color: colors.github }]}>🐙 GitHub</Text>
                 </Pressable>
               </View>
 

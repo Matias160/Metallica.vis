@@ -53,6 +53,8 @@ export const colors = {
   googleBg: '#2a1114',
   facebook: '#1877f2',
   facebookBg: '#0e2347',
+  github: '#f8fafc',
+  githubBg: '#1e232a',
   apple: '#f8fafc',
   appleBg: '#1e2538'
 };
