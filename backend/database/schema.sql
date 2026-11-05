@@ -51,6 +51,7 @@ CREATE TABLE tracks (
   license_type VARCHAR(80) NOT NULL DEFAULT 'original',
   is_featured BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_tracks_featured (is_featured),
   FOREIGN KEY (artist_id) REFERENCES artists(id)
 );
 

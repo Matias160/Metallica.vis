@@ -77,13 +77,24 @@ export async function toggleTrackFeatured(req, res, next) {
 
 export async function getStats(_req, res, next) {
   try {
-    const [[{ totalUsers }]] = await pool.query('SELECT COUNT(*) AS totalUsers FROM users');
-    const [[{ totalArtists }]] = await pool.query('SELECT COUNT(*) AS totalArtists FROM artists');
-    const [[{ totalTracks }]] = await pool.query('SELECT COUNT(*) AS totalTracks FROM tracks');
-    const [[{ totalPressings }]] = await pool.query('SELECT COUNT(*) AS totalPressings FROM pressings');
-    const [[{ totalCopiesCirculating }]] = await pool.query("SELECT COUNT(*) AS totalCopiesCirculating FROM copies WHERE status = 'owned'");
-    const [[{ totalPlays }]] = await pool.query('SELECT COUNT(*) AS totalPlays FROM playback_history');
-    const [[{ totalTransfers }]] = await pool.query('SELECT COUNT(*) AS totalTransfers FROM lineage');
+    // Optimización SQL / Backend: Ejecución en paralelo con Promise.all para reducir latencia
+    const [
+      [[{ totalUsers }]],
+      [[{ totalArtists }]],
+      [[{ totalTracks }]],
+      [[{ totalPressings }]],
+      [[{ totalCopiesCirculating }]],
+      [[{ totalPlays }]],
+      [[{ totalTransfers }]]
+    ] = await Promise.all([
+      pool.query('SELECT COUNT(*) AS totalUsers FROM users'),
+      pool.query('SELECT COUNT(*) AS totalArtists FROM artists'),
+      pool.query('SELECT COUNT(*) AS totalTracks FROM tracks'),
+      pool.query('SELECT COUNT(*) AS totalPressings FROM pressings'),
+      pool.query("SELECT COUNT(*) AS totalCopiesCirculating FROM copies WHERE status = 'owned'"),
+      pool.query('SELECT COUNT(*) AS totalPlays FROM playback_history'),
+      pool.query('SELECT COUNT(*) AS totalTransfers FROM lineage')
+    ]);
 
     res.json({
       stats: {
