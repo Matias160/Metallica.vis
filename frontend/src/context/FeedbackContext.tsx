@@ -46,8 +46,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     <FeedbackContext.Provider value={value}>
       {children}
       {message ? (
-        <Pressable onPress={dismiss} style={[styles.toast, styles[message.kind] || styles.info]}>
-          <View style={[styles.iconBadge, styles[`icon_${message.kind}` as keyof typeof styles] || styles.icon_info]}>
+        <Pressable onPress={dismiss} style={[styles.toast, (styles as any)[message.kind] || styles.info]}>
+          <View style={[styles.iconBadge, (styles as any)[`icon_${message.kind}`] || styles.icon_info]}>
             <Text style={styles.iconText}>{kindIcons[message.kind] || '●'}</Text>
           </View>
           <View style={styles.copy}>

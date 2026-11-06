@@ -1,6 +1,7 @@
 // Punto de entrada: combina navegación, sesión, tema, capas 3D y mensajes no intrusivos en TypeScript.
 import React from 'react';
-import { Platform, StatusBar } from 'react-native';
+import { Platform } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -22,11 +23,7 @@ function ThemedApp(): React.JSX.Element {
   const { isDark } = useTheme();
   return (
     <>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor="transparent"
-        translucent
-      />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <NavigationContainer>
         <RootNavigator />
       </NavigationContainer>

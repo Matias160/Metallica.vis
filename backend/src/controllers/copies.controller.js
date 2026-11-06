@@ -95,24 +95,148 @@ export async function claimCopy(req, res, next) {
     const { pressingId } = req.body;
     if (!pressingId) return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'pressingId es obligatorio' } });
     await connection.beginTransaction();
+
+    const [pressings] = await connection.query(
+      `SELECT * FROM pressings WHERE id = ? FOR UPDATE`,
+      [pressingId]
+    );
+    const pressing = pressings[0];
+    if (!pressing || pressing.available_copies <= 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: { code: 'SOLD_OUT', message: 'No quedan copias físicas disponibles de esta tirada' } });
+    }
+
+    // Buscar si ya existe una copia disponible precreada
     const [available] = await connection.query(
       `SELECT * FROM copies WHERE pressing_id = ? AND status = 'available' AND current_owner_id IS NULL ORDER BY copy_number ASC LIMIT 1 FOR UPDATE`,
       [pressingId]
     );
-    if (!available[0]) {
-      return res.status(404).json({ error: { code: 'SOLD_OUT', message: 'No quedan copias disponibles de esta tirada' } });
+
+    let copyId;
+    let copyNumber;
+
+    if (available[0]) {
+      const copy = available[0];
+      copyId = copy.id;
+      copyNumber = copy.copy_number;
+      await connection.query(
+        `UPDATE copies SET status = 'owned', current_owner_id = ? WHERE id = ?`,
+        [req.auth.sub, copyId]
+      );
+    } else {
+      // Calcular el próximo número de copia para esta tirada
+      const [maxCopy] = await connection.query(
+        `SELECT COALESCE(MAX(copy_number), 0) + 1 AS next_num FROM copies WHERE pressing_id = ?`,
+        [pressingId]
+      );
+      copyNumber = maxCopy[0].next_num;
+      const [insertRes] = await connection.query(
+        `INSERT INTO copies (pressing_id, current_owner_id, copy_number, generation, condition_value, status, playback_count)
+         VALUES (?, ?, ?, 0, 100, 'owned', 0)`,
+        [pressingId, req.auth.sub, copyNumber]
+      );
+      copyId = insertRes.insertId;
     }
-    const copy = available[0];
-    await connection.query(
-      `UPDATE copies SET status = 'owned', current_owner_id = ? WHERE id = ?`,
-      [req.auth.sub, copy.id]
-    );
+
+    // Descontar una copia disponible
     await connection.query(
       `UPDATE pressings SET available_copies = GREATEST(0, available_copies - 1) WHERE id = ?`,
       [pressingId]
     );
+
     await connection.commit();
-    res.status(201).json({ message: 'Copia adquirida y agregada a tu colección', copyId: copy.id, copyNumber: copy.copy_number });
+    res.status(201).json({ message: 'Copia física adquirida y agregada a tu colección', copyId, copyNumber });
+  } catch (error) {
+    await connection.rollback();
+    next(error);
+  } finally {
+    connection.release();
+  }
+}
+
+export async function claimByQr(req, res, next) {
+  const connection = await pool.getConnection();
+  try {
+    const { code, copyId, trackId } = req.body;
+    let targetCopyId = copyId;
+    let targetTrackId = trackId;
+
+    if (code) {
+      const clean = String(code).trim();
+      const numMatch = clean.match(/\d+/);
+      const parsedNum = numMatch ? Number(numMatch[0]) : null;
+      if (clean.toUpperCase().startsWith('SONG') || clean.toUpperCase().startsWith('TRACK')) {
+        targetTrackId = parsedNum;
+      } else {
+        targetCopyId = parsedNum;
+      }
+    }
+
+    await connection.beginTransaction();
+
+    let resolvedTrackId = targetTrackId;
+    let pressingId = null;
+
+    if (targetCopyId) {
+      const [copyRows] = await connection.query(
+        `SELECT c.*, p.track_id FROM copies c JOIN pressings p ON p.id = c.pressing_id WHERE c.id = ?`,
+        [targetCopyId]
+      );
+      if (copyRows[0]) {
+        resolvedTrackId = copyRows[0].track_id;
+        pressingId = copyRows[0].pressing_id;
+      }
+    }
+
+    if (!resolvedTrackId && !pressingId) {
+      const [firstTrack] = await connection.query('SELECT id FROM tracks ORDER BY id ASC LIMIT 1');
+      resolvedTrackId = firstTrack[0]?.id;
+    }
+
+    if (!pressingId && resolvedTrackId) {
+      const [pressRows] = await connection.query(
+        `SELECT id FROM pressings WHERE track_id = ? LIMIT 1`,
+        [resolvedTrackId]
+      );
+      if (pressRows[0]) {
+        pressingId = pressRows[0].id;
+      } else {
+        const [newPress] = await connection.query(
+          `INSERT INTO pressings (track_id, total_copies, available_copies, generation_limit) VALUES (?, 50, 49, 4)`,
+          [resolvedTrackId]
+        );
+        pressingId = newPress.insertId;
+      }
+    }
+
+    const [maxCopy] = await connection.query(
+      `SELECT COALESCE(MAX(copy_number), 0) + 1 AS next_num FROM copies WHERE pressing_id = ?`,
+      [pressingId]
+    );
+    const copyNumber = maxCopy[0].next_num;
+
+    const [insertRes] = await connection.query(
+      `INSERT INTO copies (pressing_id, current_owner_id, copy_number, generation, condition_value, status, playback_count)
+       VALUES (?, ?, ?, 0, 100, 'owned', 0)`,
+      [pressingId, req.auth.sub, copyNumber]
+    );
+    const newCopyId = insertRes.insertId;
+
+    await connection.query(
+      `UPDATE pressings SET available_copies = GREATEST(0, available_copies - 1) WHERE id = ?`,
+      [pressingId]
+    );
+
+    const [tInfo] = await connection.query('SELECT title FROM tracks WHERE id = ?', [resolvedTrackId]);
+    const trackTitle = tInfo[0]?.title || 'Pista de Audio';
+
+    await connection.commit();
+    res.status(201).json({
+      message: `¡Cinta física guardada en tu vitrina! Copia #${copyNumber} de "${trackTitle}".`,
+      copyId: newCopyId,
+      copyNumber,
+      trackTitle
+    });
   } catch (error) {
     await connection.rollback();
     next(error);

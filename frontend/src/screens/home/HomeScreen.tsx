@@ -58,12 +58,20 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
   }
 
   async function handleClaim(pressing, trackTitle) {
+    if (!pressing || !pressing.id) {
+      notify('Tirada no disponible', 'Esta pista no tiene una tirada física activa configurada.', 'warning');
+      return;
+    }
+    if (!token) {
+      notify('Inicio de sesión requerido', 'Iniciá sesión para adquirir y guardar cintas físicas en tu colección.', 'warning');
+      return;
+    }
     try {
       setClaimingId(pressing.id);
       const res = await apiRequest('/copies/claim', {
         method: 'POST',
         token,
-        body: { pressingId: pressing.id }
+        body: { pressingId: Number(pressing.id) }
       });
       notify(
         'Cinta física adquirida',
@@ -226,7 +234,6 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
 
             return (
               <View
-                className="card-studio"
                 style={[
                   styles.card,
                   { backgroundColor: palette.surface, borderColor: palette.border },
@@ -338,7 +345,6 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
 
                     {/* Tecla de Platina / Botón con Relieve Táctil */}
                     <Pressable
-                      className="btn-primary"
                       style={({ pressed }) => [
                         styles.claimBtn,
                         !isSoldOut && [styles.claimBtnTactile, { backgroundColor: palette.accent }],

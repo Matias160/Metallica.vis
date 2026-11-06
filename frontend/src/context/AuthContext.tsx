@@ -10,7 +10,7 @@ export interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   register: (username: string, email: string, password: string, displayName: string, role?: UserRole) => Promise<User>;
-  socialLogin: (provider: string, providerId: string, email: string, displayName?: string) => Promise<User>;
+  socialLogin: (provider: string, providerId: string, email: string, displayName?: string, role?: UserRole) => Promise<User>;
   updateProfile: (data: { username?: string; displayName?: string; avatarUrl?: string }) => Promise<any>;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
@@ -91,11 +91,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     provider: string,
     providerId: string,
     email: string,
-    displayName?: string
+    displayName?: string,
+    role?: UserRole
   ): Promise<User> {
     const session: AuthSession = await apiRequest('/auth/social-login', {
       method: 'POST',
-      body: { provider, providerId, email, displayName }
+      body: { provider, providerId, email, displayName, role }
     });
     setUser(session.user);
     setToken(session.accessToken);

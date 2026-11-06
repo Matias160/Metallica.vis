@@ -150,8 +150,17 @@ export async function socialLogin(req, res, next) {
           );
           userId = newUser.insertId;
 
-          const [roles] = await connection.query('SELECT id FROM roles WHERE name = ?', ['collector']);
-          await connection.query('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [userId, roles[0].id]);
+          const targetRole = ['collector', 'artist', 'admin'].includes(req.body.role) ? req.body.role : 'collector';
+          const [roles] = await connection.query('SELECT id FROM roles WHERE name = ?', [targetRole]);
+          if (roles[0]) {
+            await connection.query('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [userId, roles[0].id]);
+          }
+          if (targetRole === 'artist') {
+            await connection.query(
+              'INSERT INTO artists (owner_user_id, name, biography, verified) VALUES (?, ?, ?, TRUE)',
+              [userId, displayName || baseUsername, 'Artista registrado mediante autenticación federada.', true]
+            );
+          }
         }
 
         await connection.query(

@@ -12,6 +12,7 @@ import {
   View
 } from 'react-native';
 import { apiRequest } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { useFeedback } from '../context/FeedbackContext';
 import { useTheme } from '../context/ThemeContext';
 import { shadows } from '../theme/colors';
@@ -25,9 +26,11 @@ export interface QrScannerModalProps {
 export default function QrScannerModal({ visible, onClose, onOpenTape }: QrScannerModalProps): React.JSX.Element {
   const { palette } = useTheme();
   const { notify } = useFeedback();
+  const { token, user } = useAuth();
 
   const [inputCode, setInputCode] = useState<string>('');
   const [verifying, setVerifying] = useState<boolean>(false);
+  const [claiming, setClaiming] = useState<boolean>(false);
   const [certificateData, setCertificateData] = useState<any>(null);
   const [scanLaser] = useState<Animated.Value>(new Animated.Value(0));
 
@@ -45,6 +48,38 @@ export default function QrScannerModal({ visible, onClose, onOpenTape }: QrScann
     inputRange: [0, 1],
     outputRange: [0, 140]
   });
+
+  async function handleClaimTape() {
+    if (!token) {
+      notify('Sesión requerida', 'Debés iniciar sesión para guardar cintas a tu nombre.', 'warning');
+      return;
+    }
+    try {
+      setClaiming(true);
+      const res = await apiRequest('/copies/claim-qr', {
+        method: 'POST',
+        token,
+        body: {
+          code: inputCode,
+          copyId: certificateData?.tape?.id,
+          trackId: certificateData?.tape?.trackId
+        }
+      });
+      notify(
+        '¡Cinta Guardada!',
+        res.message || 'La copia física ha sido agregada a tu vitrina personal.',
+        'success'
+      );
+      if (onOpenTape) {
+        onOpenTape(res.copy || certificateData.tape);
+      }
+      handleClose();
+    } catch (err: any) {
+      notify('Error al reclamar cinta', err.message || 'No se pudo guardar la cinta.', 'error');
+    } finally {
+      setClaiming(false);
+    }
+  }
 
   async function verifyTapeCode(codeOrId) {
     if (!codeOrId || !String(codeOrId).trim()) {
@@ -173,6 +208,26 @@ export default function QrScannerModal({ visible, onClose, onOpenTape }: QrScann
                     </Text>
                   </View>
                 </View>
+
+                {/* Botón Principal: Guardar como mía en mi vitrina */}
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.claimScannedBtn,
+                    { backgroundColor: palette.cyan },
+                    pressed && { opacity: 0.85 },
+                    claiming && { opacity: 0.7 }
+                  ]}
+                  onPress={handleClaimTape}
+                  disabled={claiming}
+                >
+                  {claiming ? (
+                    <ActivityIndicator color="#090a0f" size="small" />
+                  ) : (
+                    <Text style={[styles.claimScannedText, { color: '#090a0f' }]}>
+                      📥 GUARDAR COMO MÍA EN MI VITRINA
+                    </Text>
+                  )}
+                </Pressable>
 
                 <Pressable
                   style={[styles.certActionBtn, { backgroundColor: palette.accent }]}
@@ -521,11 +576,23 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginTop: 2
   },
+  claimScannedBtn: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 18
+  },
+  claimScannedText: {
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.8
+  },
   certActionBtn: {
     paddingVertical: 13,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 18
+    marginTop: 8
   },
   certActionText: {
     fontWeight: '900',

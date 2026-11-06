@@ -1,12 +1,13 @@
 // Endpoints para crear, consultar y transferir copias.
 import { Router } from 'express';
 import { requireAuth } from '../middlewares/auth.middleware.js';
-import { claimCopy, dubCopy, getCollection, getCopy, getLineage, playCopy, removeCopy } from '../controllers/copies.controller.js';
+import { claimByQr, claimCopy, dubCopy, getCollection, getCopy, getLineage, playCopy, removeCopy } from '../controllers/copies.controller.js';
 
 const router = Router();
 router.use(requireAuth);
 router.get('/collection', getCollection);
 router.post('/copies/claim', claimCopy);
+router.post('/copies/claim-qr', claimByQr);
 router.get('/copies/:id', getCopy);
 router.delete('/copies/:id', removeCopy);
 router.post('/copies/:id/play', playCopy);

@@ -89,11 +89,49 @@ router.get('/verify-tape/:id', async (req, res, next) => {
       [copyId]
     );
 
-    const tape = rows[0];
+    let tape = rows[0];
+    if (!tape) {
+      // Intentar buscar como código o ID de canción / pista máster
+      const [trackRows] = await pool.query(
+        `SELECT t.id AS track_id, t.title AS track_title, t.license_type, t.audio_url, t.cover_url,
+                a.id AS artist_id, a.name AS artist_name, a.verified AS artist_verified,
+                p.id AS pressing_id, p.total_copies, p.available_copies
+         FROM tracks t
+         JOIN artists a ON a.id = t.artist_id
+         LEFT JOIN pressings p ON p.track_id = t.id
+         WHERE t.id = ? LIMIT 1`,
+        [copyId]
+      );
+      if (trackRows[0]) {
+        const tr = trackRows[0];
+        tape = {
+          copy_id: null,
+          copy_number: 1,
+          generation: 0,
+          condition_value: 100,
+          status: 'available',
+          playback_count: 0,
+          created_at: new Date(),
+          pressing_id: tr.pressing_id,
+          total_copies: tr.total_copies || 50,
+          track_id: tr.track_id,
+          track_title: tr.track_title,
+          license_type: tr.license_type || 'Master Tape Vault',
+          audio_url: tr.audio_url,
+          cover_url: tr.cover_url,
+          artist_id: tr.artist_id,
+          artist_name: tr.artist_name,
+          artist_verified: Boolean(tr.artist_verified),
+          owner_name: 'Bodega Central · Disponible para Reclamar',
+          owner_username: 'bodega'
+        };
+      }
+    }
+
     if (!tape) {
       return res.status(404).json({
         valid: false,
-        error: { code: 'TAPE_NOT_FOUND', message: 'El código QR no corresponde a ninguna cinta física registrada en el máster.' }
+        error: { code: 'TAPE_NOT_FOUND', message: 'El código QR no corresponde a ninguna cinta física o pista registrada.' }
       });
     }
 

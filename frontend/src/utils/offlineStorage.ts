@@ -18,7 +18,8 @@ export type OfflineTracksMap = Record<string, OfflineTrackMetadata>;
 
 function getLocalDirectory(): string | null {
   if (Platform.OS === 'web') return null;
-  return `${FileSystem.documentDirectory || ''}offline_audio/`;
+  const docDir = (FileSystem as any).documentDirectory || '';
+  return `${docDir}offline_audio/`;
 }
 
 // Obtener mapa de pistas guardadas offline

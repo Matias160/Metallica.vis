@@ -332,12 +332,12 @@ export default function CollectionScreen(): React.JSX.Element {
 
           {/* Filtros de formato */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-            {[
+            {([
               { id: 'all', label: `Todos (${copies.length})` },
               { id: 'cassette', label: '📼 Casetes' },
               { id: 'vinyl', label: '💿 Vinilos' },
               { id: 'special', label: '★ Edición Especial' }
-            ].map((f) => (
+            ] as const).map((f) => (
               <Pressable
                 key={f.id}
                 style={[

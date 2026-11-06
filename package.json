@@ -9,6 +9,7 @@
     "frontend:web": "npm --prefix frontend run web",
     "backend": "npm --prefix backend start",
     "backend:dev": "npm --prefix backend run dev",
-    "db:status": "npm --prefix backend run db:status"
+    "db:status": "npm --prefix backend run db:status",
+    "build:apk": "npm --prefix frontend run build:apk"
   }
 }

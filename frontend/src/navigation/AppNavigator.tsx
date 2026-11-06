@@ -19,7 +19,7 @@ const Tabs = createBottomTabNavigator();
 
 export function AuthStack(): React.JSX.Element {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator id="auth-stack" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
     </Stack.Navigator>
@@ -52,6 +52,7 @@ export function MainStack(): React.JSX.Element {
 
   return (
     <Tabs.Navigator
+      id="main-tabs"
       screenOptions={{
         headerShown: false, // Desactivar header nativo redundante: cada pantalla tiene su top bar de estudio
         tabBarLabelStyle: {

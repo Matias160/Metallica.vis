@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -19,6 +20,7 @@ WebBrowser.maybeCompleteAuthSession();
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { colors, shadows } from '../../theme/colors';
+import { UserRole } from '../../types';
 
 export default function LoginScreen({ navigation }: { navigation: any }): React.JSX.Element {
   const { width } = useWindowDimensions();
@@ -32,6 +34,19 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [focusedInput, setFocusedInput] = useState<string | null>(null);
   const [showOAuthInfo, setShowOAuthInfo] = useState<boolean>(false);
+  const [roleModalVisible, setRoleModalVisible] = useState<boolean>(false);
+  const [pendingProvider, setPendingProvider] = useState<'google' | 'spotify' | 'github'>('google');
+  const [chosenRole, setChosenRole] = useState<UserRole>('collector');
+
+  function openRoleModal(provider: 'google' | 'spotify' | 'github') {
+    setPendingProvider(provider);
+    setRoleModalVisible(true);
+  }
+
+  async function confirmSocialLogin() {
+    setRoleModalVisible(false);
+    await handleSocial(pendingProvider, chosenRole);
+  }
 
   async function submit() {
     setErrorMsg('');
@@ -51,7 +66,7 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
   }
 
   // Redirección oficial OAuth 2.0 a la web del proveedor en ventana emergente / navegador nativo
-  async function handleSocial(provider) {
+  async function handleSocial(provider, role = chosenRole) {
     try {
       setLoading(true);
       setErrorMsg('');
@@ -86,23 +101,23 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
         google: {
           id: `goog_${Date.now()}`,
           email: 'usuario.google@gmail.com',
-          name: 'Coleccionista Google'
+          name: `Usuario Google (${role})`
         },
         spotify: {
           id: `sp_${Date.now()}`,
           email: 'usuario.spotify@gmail.com',
-          name: 'Coleccionista Spotify'
+          name: `Usuario Spotify (${role})`
         },
         github: {
           id: `gh_${Date.now()}`,
           email: 'usuario.github@gmail.com',
-          name: 'Coleccionista GitHub'
+          name: `Usuario GitHub (${role})`
         }
       };
 
       const account = mockAccounts[provider] || mockAccounts.google;
-      await socialLogin(provider, account.id, account.email, account.name);
-      notify('OAuth 2.0 Verificado', `Sesión iniciada correctamente con ${provider.toUpperCase()}`, 'success');
+      await socialLogin(provider, account.id, account.email, account.name, role);
+      notify('OAuth 2.0 Verificado', `Sesión iniciada con ${provider.toUpperCase()} con perfil de ${role.toUpperCase()}`, 'success');
     } catch (error) {
       console.warn('Error OAuth:', error);
       setErrorMsg(error.message || `Error con ${provider}`);
@@ -384,7 +399,7 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
                     { borderColor: colors.google, backgroundColor: colors.googleBg },
                     pressed && { opacity: 0.8 }
                   ]}
-                  onPress={() => handleSocial('google')}
+                  onPress={() => openRoleModal('google')}
                   disabled={loading}
                 >
                   <Text style={[styles.socialText, { color: '#fca5a5' }]}>G Google</Text>
@@ -396,7 +411,7 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
                     { borderColor: colors.spotify, backgroundColor: colors.spotifyBg },
                     pressed && { opacity: 0.8 }
                   ]}
-                  onPress={() => handleSocial('spotify')}
+                  onPress={() => openRoleModal('spotify')}
                   disabled={loading}
                 >
                   <Text style={[styles.socialText, { color: colors.spotify }]}>🎧 Spotify</Text>
@@ -408,7 +423,7 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
                     { borderColor: '#475569', backgroundColor: colors.githubBg },
                     pressed && { opacity: 0.8 }
                   ]}
-                  onPress={() => handleSocial('github')}
+                  onPress={() => openRoleModal('github')}
                   disabled={loading}
                 >
                   <Text style={[styles.socialText, { color: colors.github }]}>🐙 GitHub</Text>
@@ -454,6 +469,95 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Modal de Selección Obligatoria de Rol para Registro Social */}
+      <Modal visible={roleModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, shadows.lg]}>
+            <View style={styles.modalHeader}>
+              <View style={styles.oauthBadge}>
+                <View style={styles.oauthDot} />
+                <Text style={styles.oauthBadgeText}>
+                  REGISTRO / ACCESO CON {pendingProvider.toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.modalTitle}>Elegí tu Rol de Usuario</Text>
+              <Text style={styles.modalSubtitle}>
+                Para registrarte con {pendingProvider.toUpperCase()}, seleccioná qué perfil querés asumir en la red:
+              </Text>
+            </View>
+
+            {/* Opciones de Rol */}
+            <View style={{ gap: 10, marginVertical: 12 }}>
+              {[
+                {
+                  id: 'collector' as UserRole,
+                  title: '📼 Coleccionista',
+                  desc: 'Custodia copias físicas, escucha cintas numeradas y dubbea linajes.',
+                  color: colors.accent
+                },
+                {
+                  id: 'artist' as UserRole,
+                  title: '🎛️ Artista / Sello',
+                  desc: 'Publica másters, autoriza tiradas limitadas y custodia regalías.',
+                  color: colors.cyan
+                },
+                {
+                  id: 'admin' as UserRole,
+                  title: '🏛️ Archivista',
+                  desc: 'Audita el catálogo histórico, supervisa prensas y verifica autenticidad.',
+                  color: '#a78bfa'
+                }
+              ].map((r) => {
+                const isSelected = chosenRole === r.id;
+                return (
+                  <Pressable
+                    key={r.id}
+                    style={({ pressed }) => [
+                      {
+                        borderWidth: 1.5,
+                        borderColor: isSelected ? r.color : 'rgba(255,255,255,0.1)',
+                        backgroundColor: isSelected ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.02)',
+                        borderRadius: 10,
+                        padding: 12
+                      },
+                      pressed && { opacity: 0.8 }
+                    ]}
+                    onPress={() => setChosenRole(r.id)}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ color: isSelected ? r.color : colors.text, fontWeight: '900', fontSize: 14 }}>
+                        {r.title}
+                      </Text>
+                      {isSelected ? (
+                        <Text style={{ color: r.color, fontWeight: '900', fontSize: 11 }}>✓ SELECCIONADO</Text>
+                      ) : null}
+                    </View>
+                    <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 15 }}>{r.desc}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.modalBtnRow}>
+              <Pressable style={styles.modalCancelBtn} onPress={() => setRoleModalVisible(false)}>
+                <Text style={styles.modalCancelText}>CANCELAR</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.modalSubmitBtn,
+                  pressed && { opacity: 0.85 }
+                ]}
+                onPress={confirmSocialLogin}
+              >
+                <Text style={styles.modalSubmitText}>
+                  CONTINUAR CON {pendingProvider.toUpperCase()}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -6,12 +6,17 @@ export interface User {
   id: number;
   username: string;
   email: string;
-  displayName: string;
+  displayName?: string;
+  display_name?: string;
   avatarUrl?: string | null;
-  isActive: boolean;
+  avatar_url?: string | null;
+  isActive?: boolean;
+  is_active?: boolean;
   roles: UserRole[];
-  createdAt: string;
+  createdAt?: string;
+  created_at?: string;
   ownedCopiesCount?: number;
+  owned_copies_count?: number;
 }
 
 export interface Artist {
@@ -19,44 +24,68 @@ export interface Artist {
   name: string;
   biography?: string | null;
   verified: boolean;
-  ownerUserId: number;
-  createdAt: string;
+  ownerUserId?: number;
+  owner_user_id?: number;
+  createdAt?: string;
+  created_at?: string;
 }
 
 export interface Track {
   id: number;
-  artistId: number;
+  artistId?: number;
+  artist_id?: number;
   artistName?: string;
+  artist_name?: string;
   title: string;
   description?: string | null;
-  audioUrl: string;
+  audioUrl?: string;
+  audio_url?: string;
   coverUrl?: string | null;
+  cover_url?: string | null;
   durationSeconds?: number | null;
-  licenseType: string;
-  isFeatured: boolean;
-  createdAt: string;
+  duration_seconds?: number | null;
+  licenseType?: string;
+  license_type?: string;
+  isFeatured?: boolean;
+  is_featured?: boolean;
+  verified?: boolean;
+  createdAt?: string;
+  created_at?: string;
 }
 
 export type CopyStatus = 'available' | 'owned' | 'transferred' | 'archived' | 'restored';
 
 export interface Copy {
   id: number;
-  pressingId: number;
+  pressingId?: number;
+  pressing_id?: number;
   currentOwnerId?: number | null;
+  current_owner_id?: number | null;
   parentCopyId?: number | null;
-  copyNumber: number;
+  parent_copy_id?: number | null;
+  copyNumber?: number;
+  copy_number?: number;
   totalCopies?: number;
+  total_copies?: number;
   generation: number;
-  conditionValue: number;
-  playbackCount: number;
+  conditionValue?: number;
+  condition_value?: number;
+  playbackCount?: number;
+  playback_count?: number;
   status: CopyStatus;
-  createdAt: string;
+  createdAt?: string;
+  created_at?: string;
   updatedAt?: string;
+  updated_at?: string;
   // Campos derivados por JOIN con tracks/pressings
   trackTitle?: string;
+  track_title?: string;
   artistName?: string;
+  artist_name?: string;
   coverUrl?: string | null;
+  cover_url?: string | null;
   audioUrl?: string;
+  audio_url?: string;
 }
 
 export interface LineageEvent {
