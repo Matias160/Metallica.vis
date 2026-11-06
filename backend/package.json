@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "db:status": "node database/check_cloud_status.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
