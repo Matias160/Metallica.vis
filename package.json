@@ -1,0 +1,13 @@
+{
+  "name": "metallica-vis-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de preservación física & digital de música analógica",
+  "scripts": {
+    "start": "npm --prefix frontend start",
+    "frontend": "npm --prefix frontend start",
+    "frontend:web": "npm --prefix frontend run web",
+    "backend": "npm --prefix backend start",
+    "backend:dev": "npm --prefix backend run dev"
+  }
+}
