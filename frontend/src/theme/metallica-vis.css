@@ -101,6 +101,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* En navegador web (pantallas amplias de escritorio), centrar con un ancho máximo de 1200px */
+@media screen and (min-width: 1200px) {
+  #root, #__next, body > div[tabindex] {
+    max-width: 1200px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    width: 100% !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+  }
+}
+
 /* --------------------------------------------------------------------------
    3. TIPOGRAFÍA INDUSTRIAL & JERARQUÍAS
    -------------------------------------------------------------------------- */

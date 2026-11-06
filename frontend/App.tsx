@@ -1,6 +1,6 @@
 // Punto de entrada: combina navegación, sesión, tema, capas 3D y mensajes no intrusivos en TypeScript.
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -20,14 +20,16 @@ if (Platform.OS === 'web') {
 }
 
 function ThemedApp(): React.JSX.Element {
-  const { isDark } = useTheme();
+  const { isDark, palette } = useTheme();
   return (
-    <>
+    <View style={[styles.outerContainer, { backgroundColor: palette.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <NavigationContainer>
-        <RootNavigator />
-      </NavigationContainer>
-    </>
+      <View style={[styles.innerContainer, { backgroundColor: palette.background }]}>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+      </View>
+    </View>
   );
 }
 
@@ -50,3 +52,17 @@ export default function App(): React.JSX.Element {
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  outerContainer: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  innerContainer: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 1200
+  }
+});
