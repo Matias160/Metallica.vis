@@ -185,7 +185,7 @@ export default function MuseumScreen({ navigation }) {
             </View>
             <Text style={[styles.title, { color: palette.text }]}>Museo Analógico</Text>
             <Text style={[styles.subtitle, { color: palette.muted }]}>
-              Preservación histórica, vitrinas comunitarias destacadas y certificados de autenticidad.
+              Preservación histórica, másters originales y certificados de autenticidad.
             </Text>
           </View>
 
@@ -225,23 +225,6 @@ export default function MuseumScreen({ navigation }) {
               ]}
             >
               Másters Históricos (4)
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={[
-              styles.tabBtn,
-              activeTab === 'collections' && [styles.tabBtnActive, { borderColor: palette.accent, backgroundColor: palette.accentMuted }]
-            ]}
-            onPress={() => setActiveTab('collections')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === 'collections' ? palette.accent : palette.muted }
-              ]}
-            >
-              Vitrinas Notables (3)
             </Text>
           </Pressable>
 
@@ -352,63 +335,6 @@ export default function MuseumScreen({ navigation }) {
                 </View>
               );
             })}
-          </View>
-        )}
-
-        {activeTab === 'collections' && (
-          <View>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: palette.text }]}>
-                SALA 2: VITRINAS DESTACADAS DE LA COMUNIDAD
-              </Text>
-              <Text style={[styles.sectionSubtitle, { color: palette.muted }]}>
-                Colecciones privadas seleccionadas por el comité curatorial de tape trading.
-              </Text>
-            </View>
-
-            {NOTABLE_COLLECTIONS.map((c) => (
-              <View
-                key={c.id}
-                style={[
-                  styles.collectionCard,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                  shadows.sm
-                ]}
-              >
-                <View style={styles.collectionTop}>
-                  <View style={styles.collectionAvatar}>
-                    <Text style={styles.collectionAvatarText}>📼</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.collectionTrader, { color: palette.accent }]}>
-                      @{c.trader}
-                    </Text>
-                    <Text style={[styles.collectionTitle, { color: palette.text }]}>
-                      {c.title}
-                    </Text>
-                    <Text style={[styles.collectionRep, { color: palette.muted }]}>
-                      {c.reputation} · {c.tapesCount} cintas activas en vitrina
-                    </Text>
-                  </View>
-                  <View style={[styles.collectionBadge, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}>
-                    <Text style={[styles.collectionBadgeText, { color: palette.cyan }]}>
-                      {c.badge}
-                    </Text>
-                  </View>
-                </View>
-
-                <Pressable
-                  style={[styles.viewShowcaseBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
-                  onPress={() =>
-                    notify('Vitrina Abierta', `Visualizando colección pública de @${c.trader}.`, 'info')
-                  }
-                >
-                  <Text style={[styles.viewShowcaseText, { color: palette.textSecondary }]}>
-                    VISITAR VITRINA PÚBLICA ➔
-                  </Text>
-                </Pressable>
-              </View>
-            ))}
           </View>
         )}
 
@@ -531,7 +457,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    maxWidth: 720,
+    maxWidth: 1200,
     alignSelf: 'center',
     width: '100%'
   },
@@ -601,7 +527,7 @@ const styles = StyleSheet.create({
   tabsRow: {
     flexDirection: 'row',
     gap: 8,
-    maxWidth: 720,
+    maxWidth: 1200,
     alignSelf: 'center',
     width: '100%',
     marginTop: 14
@@ -623,7 +549,7 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     paddingBottom: 40,
-    maxWidth: 720,
+    maxWidth: 1200,
     width: '100%',
     alignSelf: 'center'
   },

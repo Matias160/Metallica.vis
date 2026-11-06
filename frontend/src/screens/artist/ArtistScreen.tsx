@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1
   },
   topBarInner: {
-    maxWidth: 720,
+    maxWidth: 1200,
     alignSelf: 'center',
     width: '100%',
     gap: 10
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     paddingBottom: 36,
-    maxWidth: 720,
+    maxWidth: 1200,
     width: '100%',
     alignSelf: 'center'
   },

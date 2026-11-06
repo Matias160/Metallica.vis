@@ -1,6 +1,7 @@
-// Notificaciones flotantes in-app con micro-bordes de estudio y máxima legibilidad.
-import React, { createContext, useCallback, useContext, useMemo, useState, ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+// Notificaciones flotantes in-app con micro-bordes de estudio, animación elástica y vector icons.
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 export type FeedbackKind = 'info' | 'success' | 'error' | 'warning';
 
@@ -20,43 +21,106 @@ const FeedbackContext = createContext<FeedbackContextValue>({
   dismiss: () => {}
 });
 
+function ToastItem({ message, onDismiss }: { message: FeedbackMessage; onDismiss: () => void }): React.JSX.Element {
+  const animValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Entrada elástica suave
+    Animated.spring(animValue, {
+      toValue: 1,
+      damping: 14,
+      stiffness: 120,
+      useNativeDriver: true
+    }).start();
+
+    // Auto-cierre con transición de salida
+    const timer = setTimeout(() => {
+      handleExit();
+    }, 4200);
+
+    return () => clearTimeout(timer);
+  }, [message]);
+
+  const handleExit = () => {
+    Animated.timing(animValue, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true
+    }).start(() => {
+      onDismiss();
+    });
+  };
+
+  const translateY = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-30, 0]
+  });
+
+  const scale = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.94, 1]
+  });
+
+  const iconNameMap: Record<FeedbackKind, keyof typeof Feather.glyphMap> = {
+    info: 'info',
+    success: 'check-circle',
+    error: 'alert-circle',
+    warning: 'alert-triangle'
+  };
+
+  const iconColorMap: Record<FeedbackKind, string> = {
+    info: '#00e5ff',
+    success: '#10b981',
+    error: '#ff3b5c',
+    warning: '#f59e0b'
+  };
+
+  const currentIcon = iconNameMap[message.kind] || 'bell';
+  const iconColor = iconColorMap[message.kind] || '#00e5ff';
+
+  return (
+    <Animated.View
+      style={[
+        styles.toastWrapper,
+        {
+          opacity: animValue,
+          transform: [{ translateY }, { scale }]
+        }
+      ]}
+    >
+      <Pressable onPress={handleExit} style={[styles.toast, (styles as any)[message.kind] || styles.info]}>
+        <View style={[styles.iconBadge, (styles as any)[`icon_${message.kind}`] || styles.icon_info]}>
+          <Feather name={currentIcon} size={16} color={iconColor} />
+        </View>
+
+        <View style={styles.copy}>
+          <Text style={styles.title}>{message.title}</Text>
+          {message.detail ? <Text style={styles.detail}>{message.detail}</Text> : null}
+        </View>
+
+        <Pressable onPress={handleExit} hitSlop={12} style={styles.closeBtn}>
+          <Feather name="x" size={16} color="#94a3b8" />
+        </Pressable>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export function FeedbackProvider({ children }: { children: ReactNode }) {
   const [message, setMessage] = useState<FeedbackMessage | null>(null);
 
   const notify = useCallback((title: string, detail: string = '', kind: FeedbackKind = 'info') => {
     setMessage({ title, detail, kind });
-    // Auto-ocultar después de 5 segundos
-    setTimeout(() => {
-      setMessage((curr) => (curr?.title === title ? null : curr));
-    }, 5000);
   }, []);
 
   const dismiss = useCallback(() => setMessage(null), []);
 
   const value = useMemo(() => ({ notify, dismiss }), [notify, dismiss]);
 
-  const kindIcons: Record<FeedbackKind, string> = {
-    info: 'ℹ',
-    success: '✓',
-    error: '✕',
-    warning: '⚠'
-  };
-
   return (
     <FeedbackContext.Provider value={value}>
       {children}
-      {message ? (
-        <Pressable onPress={dismiss} style={[styles.toast, (styles as any)[message.kind] || styles.info]}>
-          <View style={[styles.iconBadge, (styles as any)[`icon_${message.kind}`] || styles.icon_info]}>
-            <Text style={styles.iconText}>{kindIcons[message.kind] || '●'}</Text>
-          </View>
-          <View style={styles.copy}>
-            <Text style={styles.title}>{message.title}</Text>
-            {message.detail ? <Text style={styles.detail}>{message.detail}</Text> : null}
-          </View>
-          <Text style={styles.close}>×</Text>
-        </Pressable>
-      ) : null}
+      {message ? <ToastItem message={message} onDismiss={dismiss} /> : null}
     </FeedbackContext.Provider>
   );
 }
@@ -64,45 +128,50 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 export const useFeedback = (): FeedbackContextValue => useContext(FeedbackContext);
 
 const styles = StyleSheet.create({
-  toast: {
+  toastWrapper: {
     position: 'absolute',
-    right: 20,
+    top: Platform.OS === 'web' ? 24 : 54,
     left: 20,
-    bottom: 28,
+    right: 20,
+    zIndex: 99999,
+    alignItems: 'center',
+    pointerEvents: 'box-none'
+  },
+  toast: {
+    width: '100%',
+    maxWidth: 620,
     borderRadius: 14,
-    borderWidth: 1,
-    padding: 16,
+    borderWidth: 1.5,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    zIndex: 9999,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 20
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.65,
+    shadowRadius: 20,
+    elevation: 25
   },
   iconBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1
   },
-  iconText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#ffffff'
-  },
-  icon_info: { backgroundColor: '#0d2838', borderColor: '#00e5ff' },
-  icon_success: { backgroundColor: '#092d1c', borderColor: '#10b981' },
-  icon_error: { backgroundColor: '#3b0d17', borderColor: '#ff3b5c' },
-  icon_warning: { backgroundColor: '#382506', borderColor: '#f59e0b' },
+  icon_info: { backgroundColor: 'rgba(0, 229, 255, 0.1)', borderColor: 'rgba(0, 229, 255, 0.4)' },
+  icon_success: { backgroundColor: 'rgba(16, 185, 129, 0.12)', borderColor: 'rgba(16, 185, 129, 0.4)' },
+  icon_error: { backgroundColor: 'rgba(255, 59, 92, 0.12)', borderColor: 'rgba(255, 59, 92, 0.4)' },
+  icon_warning: { backgroundColor: 'rgba(245, 158, 11, 0.12)', borderColor: 'rgba(245, 158, 11, 0.4)' },
   copy: { flex: 1 },
-  title: { color: '#f8fafc', fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
-  detail: { color: '#94a3b8', marginTop: 3, fontSize: 12, lineHeight: 17 },
-  close: { color: '#64748b', fontSize: 22, paddingHorizontal: 4, fontWeight: '300' },
+  title: { color: '#f8fafc', fontSize: 13, fontWeight: '800', letterSpacing: -0.2 },
+  detail: { color: '#94a3b8', marginTop: 2, fontSize: 11, lineHeight: 16 },
+  closeBtn: {
+    padding: 4,
+    borderRadius: 6
+  },
   info: { backgroundColor: '#0c1524', borderColor: '#00e5ff' },
   success: { backgroundColor: '#0a1d17', borderColor: '#10b981' },
   error: { backgroundColor: '#210d14', borderColor: '#ff3b5c' },

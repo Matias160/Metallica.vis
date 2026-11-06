@@ -11,9 +11,11 @@ import {
   TextInput,
   View
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useFeedback } from '../context/FeedbackContext';
+import { useSync } from '../context/SyncContext';
 import { useTheme } from '../context/ThemeContext';
 import { shadows } from '../theme/colors';
 
@@ -27,6 +29,7 @@ export default function QrScannerModal({ visible, onClose, onOpenTape }: QrScann
   const { palette } = useTheme();
   const { notify } = useFeedback();
   const { token, user } = useAuth();
+  const { triggerSync } = useSync();
 
   const [inputCode, setInputCode] = useState<string>('');
   const [verifying, setVerifying] = useState<boolean>(false);
@@ -66,10 +69,11 @@ export default function QrScannerModal({ visible, onClose, onOpenTape }: QrScann
         }
       });
       notify(
-        '¡Cinta Guardada!',
+        'Cinta Guardada',
         res.message || 'La copia física ha sido agregada a tu vitrina personal.',
         'success'
       );
+      triggerSync('tape_claimed_from_qr');
       if (onOpenTape) {
         onOpenTape(res.copy || certificateData.tape);
       }
@@ -127,8 +131,8 @@ export default function QrScannerModal({ visible, onClose, onOpenTape }: QrScann
               </View>
               <Text style={[styles.title, { color: palette.text }]}>Escáner QR de Cintas</Text>
             </View>
-            <Pressable onPress={handleClose} style={styles.closeBtn}>
-              <Text style={[styles.closeBtnText, { color: palette.muted }]}>✕</Text>
+            <Pressable onPress={handleClose} style={styles.closeBtn} hitSlop={10}>
+              <Feather name="x" size={16} color={palette.muted} />
             </Pressable>
           </View>
 
@@ -138,8 +142,9 @@ export default function QrScannerModal({ visible, onClose, onOpenTape }: QrScann
               <View style={[styles.certCard, { backgroundColor: palette.surfaceDark, borderColor: palette.success }]}>
                 <View style={styles.certHeader}>
                   <View style={[styles.certStatusPill, { backgroundColor: palette.successMuted, borderColor: palette.successBorder }]}>
+                    <Feather name="check-circle" size={12} color={palette.success} style={{ marginRight: 5 }} />
                     <Text style={[styles.certStatusText, { color: palette.success }]}>
-                      ✓ CERTIFICADO OFICIAL VÁLIDO
+                      CERTIFICADO OFICIAL VÁLIDO
                     </Text>
                   </View>
                   <Text style={[styles.certDate, { color: palette.muted }]}>
@@ -223,9 +228,12 @@ export default function QrScannerModal({ visible, onClose, onOpenTape }: QrScann
                   {claiming ? (
                     <ActivityIndicator color="#090a0f" size="small" />
                   ) : (
-                    <Text style={[styles.claimScannedText, { color: '#090a0f' }]}>
-                      📥 GUARDAR COMO MÍA EN MI VITRINA
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Feather name="download" size={13} color="#090a0f" style={{ marginRight: 6 }} />
+                      <Text style={[styles.claimScannedText, { color: '#090a0f' }]}>
+                        GUARDAR EN MI VITRINA
+                      </Text>
+                    </View>
                   )}
                 </Pressable>
 

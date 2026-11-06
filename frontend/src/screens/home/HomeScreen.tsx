@@ -1,5 +1,5 @@
 // Catálogo oficial: exploración de pistas masterizadas, tiradas físicas, escáner QR y modo día/noche en TypeScript.
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,9 +12,12 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
+import { useSync } from '../../context/SyncContext';
 import { useTheme } from '../../context/ThemeContext';
 import QrScannerModal from '../../components/QrScannerModal';
 import { shadows } from '../../theme/colors';
@@ -24,6 +27,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
   const { token, user } = useAuth();
   const { palette, isDark, toggleTheme } = useTheme();
   const { notify } = useFeedback();
+  const { syncVersion, triggerSync } = useSync();
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [pressings, setPressings] = useState<any[]>([]);
@@ -33,8 +37,19 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('all');
   const [scannerVisible, setScannerVisible] = useState<boolean>(false);
+  const listRef = useRef<FlatList>(null);
+  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
 
-  async function loadData() {
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent?.contentOffset?.y || 0;
+    setShowScrollTop(offsetY > 260);
+  };
+
+  const scrollToTop = () => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const loadData = useCallback(async () => {
     try {
       const [tracksData, pressingsData] = await Promise.all([
         apiRequest('/tracks', { token }),
@@ -45,11 +60,18 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
     } catch (err) {
       console.warn('Error cargando catálogo:', err);
     }
-  }
+  }, [token]);
+
+  // Actualización automática al recibir foco en la pestaña (sin reiniciar la app)
+  useFocusEffect(
+    useCallback(() => {
+      loadData().finally(() => setLoading(false));
+    }, [loadData, syncVersion])
+  );
 
   useEffect(() => {
     loadData().finally(() => setLoading(false));
-  }, [token]);
+  }, [loadData, syncVersion]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -79,6 +101,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
         'success'
       );
       await loadData();
+      triggerSync('tape_claimed_from_home');
     } catch (error) {
       notify('No se pudo adquirir la copia', error.message, 'error');
     } finally {
@@ -133,15 +156,17 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                 style={[styles.qrScanBtn, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}
                 onPress={() => setScannerVisible(true)}
               >
-                <Text style={[styles.qrScanBtnText, { color: palette.cyan }]}>⛶ QR</Text>
+                <Feather name="maximize" size={13} color={palette.cyan} />
+                <Text style={[styles.qrScanBtnText, { color: palette.cyan }]}>QR</Text>
               </Pressable>
 
               <Pressable
                 style={[styles.themeBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
                 onPress={toggleTheme}
               >
+                <Feather name={isDark ? 'sun' : 'moon'} size={13} color={palette.text} />
                 <Text style={[styles.themeBtnText, { color: palette.text }]}>
-                  {isDark ? '☀ DÍA' : '◐ NOCHE'}
+                  {isDark ? 'DÍA' : 'NOCHE'}
                 </Text>
               </Pressable>
 
@@ -163,7 +188,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
         {/* Buscador & Filtros */}
         <View style={styles.searchFilterRow}>
           <View style={[styles.searchBox, { backgroundColor: palette.surfaceDark, borderColor: palette.border }]}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <Feather name="search" size={14} color={palette.muted} style={{ marginRight: 8 }} />
             <TextInput
               placeholder="Buscar por pista, artista o género..."
               placeholderTextColor={palette.mutedDark}
@@ -172,18 +197,18 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
               onChangeText={setSearchQuery}
             />
             {searchQuery ? (
-              <Pressable onPress={() => setSearchQuery('')}>
-                <Text style={[styles.clearSearch, { color: palette.muted }]}>×</Text>
+              <Pressable onPress={() => setSearchQuery('')} hitSlop={10}>
+                <Feather name="x" size={14} color={palette.muted} />
               </Pressable>
             ) : null}
           </View>
 
           <View style={styles.filtersScroll}>
             {[
-              { id: 'all', label: `Todas (${tracks.length})` },
-              { id: 'featured', label: `★ Destacadas (${tracks.filter((t) => t.is_featured).length})` },
-              { id: 'available', label: 'En Stock' },
-              { id: 'verified', label: '✓ Sellos' }
+              { id: 'all', label: `Todas (${tracks.length})`, icon: null },
+              { id: 'featured', label: `Destacadas (${tracks.filter((t) => t.is_featured).length})`, icon: 'star' },
+              { id: 'available', label: 'En Stock', icon: 'archive' },
+              { id: 'verified', label: 'Sellos', icon: 'check' }
             ].map((f) => (
               <Pressable
                 key={f.id}
@@ -194,6 +219,14 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                 ]}
                 onPress={() => setFilterType(f.id)}
               >
+                {f.icon ? (
+                  <Feather
+                    name={f.icon as any}
+                    size={11}
+                    color={filterType === f.id ? palette.accent : palette.muted}
+                    style={{ marginRight: 5 }}
+                  />
+                ) : null}
                 <Text
                   style={[
                     styles.filterText,
@@ -217,10 +250,13 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={filteredTracks}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.accent} />
           }
@@ -276,7 +312,8 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                       <Text style={[styles.trackTitle, { color: palette.text }]}>{item.title}</Text>
                       {item.is_featured ? (
                         <View style={[styles.featuredTag, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]}>
-                          <Text style={[styles.featuredTagText, { color: palette.accent }]}>★ DESTACADA</Text>
+                          <Feather name="star" size={10} color={palette.accent} />
+                          <Text style={[styles.featuredTagText, { color: palette.accent }]}>DESTACADA</Text>
                         </View>
                       ) : null}
                     </View>
@@ -284,7 +321,8 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                       <Text style={[styles.artistName, { color: palette.accent }]}>{item.artist_name}</Text>
                       {item.verified ? (
                         <View style={[styles.verifiedTag, { backgroundColor: palette.successMuted, borderColor: palette.successBorder }]}>
-                          <Text style={[styles.verifiedText, { color: palette.success }]}>✓ Sello Verificado</Text>
+                          <Feather name="check" size={10} color={palette.success} />
+                          <Text style={[styles.verifiedText, { color: palette.success }]}>Sello Verificado</Text>
                         </View>
                       ) : null}
                     </View>
@@ -393,6 +431,21 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
         />
       )}
 
+      {/* Botón flotante pequeño para subir al inicio al hacer scroll hacia abajo */}
+      {showScrollTop && (
+        <Pressable
+          style={({ pressed }) => [
+            (styles as any).scrollTopBtn,
+            { backgroundColor: palette.surface, borderColor: palette.accent },
+            pressed && { opacity: 0.7, transform: [{ scale: 0.92 }] }
+          ]}
+          onPress={scrollToTop}
+          accessibilityLabel="Subir al inicio"
+        >
+          <Feather name="arrow-up" size={16} color={palette.accent} />
+        </Pressable>
+      )}
+
       {/* Modal del Escáner QR */}
       <QrScannerModal
         visible={scannerVisible}
@@ -416,7 +469,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1
   },
   topBarInner: {
-    maxWidth: 720,
+    maxWidth: 1200,
     alignSelf: 'center',
     width: '100%'
   },
@@ -502,7 +555,7 @@ const styles = StyleSheet.create({
     marginTop: 1
   },
   searchFilterRow: {
-    maxWidth: 720,
+    maxWidth: 1200,
     alignSelf: 'center',
     width: '100%',
     marginTop: 14,
@@ -547,7 +600,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     paddingBottom: 36,
-    maxWidth: 720,
+    maxWidth: 1200,
     width: '100%',
     alignSelf: 'center'
   },
@@ -812,5 +865,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 6,
     lineHeight: 19
+  },
+  scrollTopBtn: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 99,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    elevation: 8
+  },
+  scrollTopBtnText: {
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: -2
   }
 });

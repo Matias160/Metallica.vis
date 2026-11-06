@@ -6,6 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { FeedbackProvider } from './src/context/FeedbackContext';
+import { SyncProvider } from './src/context/SyncContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { AuthStack, MainStack } from './src/navigation/AppNavigator';
 
@@ -43,11 +44,13 @@ export default function App(): React.JSX.Element {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <FeedbackProvider>
-          <AuthProvider>
-            <ThemedApp />
-          </AuthProvider>
-        </FeedbackProvider>
+        <SyncProvider>
+          <FeedbackProvider>
+            <AuthProvider>
+              <ThemedApp />
+            </AuthProvider>
+          </FeedbackProvider>
+        </SyncProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
@@ -56,13 +59,10 @@ export default function App(): React.JSX.Element {
 const styles = StyleSheet.create({
   outerContainer: {
     flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center'
+    width: '100%'
   },
   innerContainer: {
     flex: 1,
-    width: '100%',
-    maxWidth: 1200
+    width: '100%'
   }
 });

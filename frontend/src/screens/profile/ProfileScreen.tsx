@@ -204,22 +204,6 @@ export default function ProfileScreen(): React.JSX.Element {
         {/* Acciones de Cuenta */}
         <View style={styles.actionGroup}>
           <Pressable
-            style={({ pressed }) => [
-              styles.refreshBtn,
-              { backgroundColor: palette.surface, borderColor: palette.border },
-              pressed && { backgroundColor: palette.surfaceHover }
-            ]}
-            onPress={async () => {
-              await refreshUser();
-              notify('Sesión sincronizada', 'Permisos y datos actualizados desde el servidor.', 'success');
-            }}
-          >
-            <Text style={[styles.refreshBtnText, { color: palette.textSecondary }]}>
-              ↻ SINCRONIZAR PERMISOS CON EL SERVIDOR
-            </Text>
-          </Pressable>
-
-          <Pressable
             style={[
               styles.themeButton,
               { backgroundColor: palette.accentMuted, borderColor: palette.accentBorder }
@@ -406,7 +390,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.backgroundElevated
   },
   topBarInner: {
-    maxWidth: 580,
+    maxWidth: 1200,
     alignSelf: 'center',
     width: '100%'
   },
@@ -443,7 +427,7 @@ const styles = StyleSheet.create({
   scroll: {
     padding: 16,
     paddingBottom: 40,
-    maxWidth: 580,
+    maxWidth: 1200,
     width: '100%',
     alignSelf: 'center'
   },

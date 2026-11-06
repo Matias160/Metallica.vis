@@ -1,5 +1,5 @@
 // Colección personal: estantería/vitrina digital, casetes, vinilos, escaneo QR y degradación analógica en TypeScript.
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -15,10 +15,13 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { Feather } from '@expo/vector-icons';
 import { soundPlayer } from '../../utils/soundPlayer';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
+import { useSync } from '../../context/SyncContext';
 import { useTheme } from '../../context/ThemeContext';
 import QrCodeModal from '../../components/QrCodeModal';
 import QrScannerModal from '../../components/QrScannerModal';
@@ -30,6 +33,7 @@ export default function CollectionScreen(): React.JSX.Element {
   const { token, user } = useAuth();
   const { palette, isDark, toggleTheme } = useTheme();
   const { notify } = useFeedback();
+  const { syncVersion, triggerSync } = useSync();
 
   const [copies, setCopies] = useState<Copy[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -59,11 +63,28 @@ export default function CollectionScreen(): React.JSX.Element {
   const [lineageModalVisible, setLineageModalVisible] = useState<boolean>(false);
   const [lineageData, setLineageData] = useState<any[]>([]);
   const [loadingLineage, setLoadingLineage] = useState<boolean>(false);
+
+  const showcaseScrollRef = useRef<any>(null);
+  const listRef = useRef<any>(null);
+  const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
+
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent?.contentOffset?.y || 0;
+    setShowScrollTop(offsetY > 260);
+  };
+
+  const scrollToTop = () => {
+    if (viewMode === 'showcase') {
+      (showcaseScrollRef.current as any)?.scrollTo?.({ y: 0, animated: true });
+    } else {
+      (listRef.current as any)?.scrollToOffset?.({ offset: 0, animated: true });
+    }
+  };
   const [selectedCopyForLineage, setSelectedCopyForLineage] = useState<Copy | null>(null);
 
   const spin = useRef(new Animated.Value(0)).current;
 
-  async function reload() {
+  const reload = useCallback(async () => {
     try {
       const [data, offlineData] = await Promise.all([
         apiRequest('/collection', { token }),
@@ -78,11 +99,18 @@ export default function CollectionScreen(): React.JSX.Element {
         setOfflineMap(offlineData || {});
       } catch {}
     }
-  }
+  }, [token]);
+
+  // Actualización instantánea al cambiar pestaña o disparar sincronización (sin reiniciar)
+  useFocusEffect(
+    useCallback(() => {
+      reload().finally(() => setLoading(false));
+    }, [reload, syncVersion])
+  );
 
   useEffect(() => {
     reload().finally(() => setLoading(false));
-  }, [token]);
+  }, [reload, syncVersion]);
 
   useEffect(() => {
     return () => {
@@ -270,15 +298,17 @@ export default function CollectionScreen(): React.JSX.Element {
                 style={[styles.qrScanBtn, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}
                 onPress={() => setScannerVisible(true)}
               >
-                <Text style={[styles.qrScanBtnText, { color: palette.cyan }]}>⛶ QR</Text>
+                <Feather name="maximize" size={13} color={palette.cyan} />
+                <Text style={[styles.qrScanBtnText, { color: palette.cyan }]}>QR</Text>
               </Pressable>
 
               <Pressable
                 style={[styles.themeToggleBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
                 onPress={toggleTheme}
               >
+                <Feather name={isDark ? 'sun' : 'moon'} size={13} color={palette.text} />
                 <Text style={[styles.themeToggleText, { color: palette.text }]}>
-                  {isDark ? '☀ DÍA' : '◐ NOCHE'}
+                  {isDark ? 'DÍA' : 'NOCHE'}
                 </Text>
               </Pressable>
             </View>
@@ -302,13 +332,19 @@ export default function CollectionScreen(): React.JSX.Element {
               ]}
               onPress={() => setViewMode('showcase')}
             >
+              <Feather
+                name="grid"
+                size={12}
+                color={viewMode === 'showcase' ? palette.background : palette.muted}
+                style={{ marginRight: 5 }}
+              />
               <Text
                 style={[
                   styles.modeBtnText,
                   { color: viewMode === 'showcase' ? palette.background : palette.muted }
                 ]}
               >
-                📼 Vitrina 3D
+                Vitrina 3D
               </Text>
             </Pressable>
 
@@ -319,13 +355,19 @@ export default function CollectionScreen(): React.JSX.Element {
               ]}
               onPress={() => setViewMode('list')}
             >
+              <Feather
+                name="list"
+                size={12}
+                color={viewMode === 'list' ? palette.background : palette.muted}
+                style={{ marginRight: 5 }}
+              />
               <Text
                 style={[
                   styles.modeBtnText,
                   { color: viewMode === 'list' ? palette.background : palette.muted }
                 ]}
               >
-                ☰ Lista Deck
+                Lista Deck
               </Text>
             </Pressable>
           </View>
@@ -333,10 +375,10 @@ export default function CollectionScreen(): React.JSX.Element {
           {/* Filtros de formato */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
             {([
-              { id: 'all', label: `Todos (${copies.length})` },
-              { id: 'cassette', label: '📼 Casetes' },
-              { id: 'vinyl', label: '💿 Vinilos' },
-              { id: 'special', label: '★ Edición Especial' }
+              { id: 'all', label: `Todos (${copies.length})`, icon: null },
+              { id: 'cassette', label: 'Casetes', icon: 'archive' },
+              { id: 'vinyl', label: 'Vinilos', icon: 'disc' },
+              { id: 'special', label: 'Edición Especial', icon: 'star' }
             ] as const).map((f) => (
               <Pressable
                 key={f.id}
@@ -347,6 +389,14 @@ export default function CollectionScreen(): React.JSX.Element {
                 ]}
                 onPress={() => setFormatFilter(f.id)}
               >
+                {f.icon ? (
+                  <Feather
+                    name={f.icon as any}
+                    size={11}
+                    color={formatFilter === f.id ? palette.accent : palette.muted}
+                    style={{ marginRight: 5 }}
+                  />
+                ) : null}
                 <Text
                   style={[
                     styles.formatChipText,
@@ -371,6 +421,9 @@ export default function CollectionScreen(): React.JSX.Element {
       ) : viewMode === 'showcase' ? (
         /* ================= VISTA VITRINA / ESTANTERÍA DIGITAL ================= */
         <ScrollView
+          ref={showcaseScrollRef as any}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           contentContainerStyle={styles.shelfScroll}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -532,6 +585,9 @@ export default function CollectionScreen(): React.JSX.Element {
       ) : (
         /* ================= VISTA LISTA DETALLADA TRADICIONAL ================= */
         <FlatList
+          ref={listRef}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           data={filteredCopies}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.listContent}
@@ -697,18 +753,26 @@ export default function CollectionScreen(): React.JSX.Element {
                   >
                     <Text style={[styles.actionBtnText, { color: palette.textSecondary }]}>📜 LINAJE</Text>
                   </Pressable>
-
-                  <Pressable
-                    style={[styles.deleteBtn, { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder }]}
-                    onPress={() => handleDelete(item)}
-                  >
-                    <Text style={[styles.deleteBtnText, { color: palette.danger }]}>✕</Text>
-                  </Pressable>
                 </View>
               </View>
             );
           }}
         />
+      )}
+
+      {/* Botón flotante pequeño para subir al inicio al hacer scroll hacia abajo */}
+      {showScrollTop && (
+        <Pressable
+          style={({ pressed }) => [
+            (styles as any).scrollTopBtn,
+            { backgroundColor: palette.surface, borderColor: palette.accent },
+            pressed && { opacity: 0.7, transform: [{ scale: 0.92 }] }
+          ]}
+          onPress={scrollToTop}
+          accessibilityLabel="Subir al inicio"
+        >
+          <Feather name="arrow-up" size={16} color={palette.accent} />
+        </Pressable>
       )}
 
       {/* ================= MODAL DE INSPECCIÓN 3D DE VITRINA ================= */}
@@ -868,15 +932,6 @@ export default function CollectionScreen(): React.JSX.Element {
                     >
                       <Text style={[styles.inspectedActionBtnText, { color: palette.textSecondary }]}>
                         📜 LINAJE
-                      </Text>
-                    </Pressable>
-
-                    <Pressable
-                      style={[styles.inspectedActionBtn, { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder }]}
-                      onPress={() => handleDelete(inspectedCopy)}
-                    >
-                      <Text style={[styles.inspectedActionBtnText, { color: palette.danger }]}>
-                        ✕ ARCHIVAR
                       </Text>
                     </Pressable>
                   </View>
@@ -1044,7 +1099,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1
   },
   topBarInner: {
-    maxWidth: 720,
+    maxWidth: 1200,
     alignSelf: 'center',
     width: '100%'
   },
@@ -1115,7 +1170,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    maxWidth: 720,
+    maxWidth: 1200,
     alignSelf: 'center',
     width: '100%',
     marginTop: 14,
@@ -1157,7 +1212,7 @@ const styles = StyleSheet.create({
   shelfScroll: {
     padding: 16,
     paddingBottom: 40,
-    maxWidth: 720,
+    maxWidth: 1200,
     width: '100%',
     alignSelf: 'center'
   },
@@ -1406,7 +1461,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     paddingBottom: 36,
-    maxWidth: 720,
+    maxWidth: 1200,
     width: '100%',
     alignSelf: 'center'
   },
@@ -1944,5 +1999,27 @@ const styles = StyleSheet.create({
   },
   lineageDate: {
     fontSize: 10
+  },
+  scrollTopBtn: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 99,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    elevation: 8
+  },
+  scrollTopBtnText: {
+    fontSize: 13,
+    fontWeight: '900',
+    marginTop: -2
   }
 });

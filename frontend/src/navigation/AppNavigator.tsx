@@ -2,7 +2,8 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -27,17 +28,15 @@ export function AuthStack(): React.JSX.Element {
 }
 
 interface TabIconProps {
-  symbol: string;
+  name: keyof typeof Feather.glyphMap;
   focused: boolean;
   color: string;
 }
 
-function TabIcon({ symbol, focused, color }: TabIconProps): React.JSX.Element {
+function TabIcon({ name, focused, color }: TabIconProps): React.JSX.Element {
   return (
     <View style={navStyles.iconWrap}>
-      <Text style={[navStyles.iconSymbol, { color: focused ? color : '#64748b' }]}>
-        {symbol}
-      </Text>
+      <Feather name={name} size={18} color={focused ? color : '#64748b'} />
       {focused && <View style={[navStyles.activeDot, { backgroundColor: color }]} />}
     </View>
   );
@@ -87,7 +86,7 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Catálogo',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon symbol="✦" focused={focused} color={color} />
+            <TabIcon name="disc" focused={focused} color={color} />
           )
         }}
       />
@@ -97,7 +96,7 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Cintas',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon symbol="📼" focused={focused} color={color} />
+            <TabIcon name="archive" focused={focused} color={color} />
           )
         }}
       />
@@ -108,7 +107,7 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Museo',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon symbol="🏛️" focused={focused} color={color} />
+            <TabIcon name="award" focused={focused} color={color} />
           )
         }}
       />
@@ -121,7 +120,7 @@ export function MainStack(): React.JSX.Element {
           options={{
             tabBarLabel: 'Estudio',
             tabBarIcon: ({ focused, color }) => (
-              <TabIcon symbol="🎚" focused={focused} color={color} />
+              <TabIcon name="sliders" focused={focused} color={color} />
             )
           }}
         />
@@ -135,7 +134,7 @@ export function MainStack(): React.JSX.Element {
           options={{
             tabBarLabel: 'Admin',
             tabBarIcon: ({ focused, color }) => (
-              <TabIcon symbol="⚙" focused={focused} color={color} />
+              <TabIcon name="shield" focused={focused} color={color} />
             )
           }}
         />
@@ -147,7 +146,7 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Perfil',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon symbol="●" focused={focused} color={color} />
+            <TabIcon name="user" focused={focused} color={color} />
           )
         }}
       />
@@ -160,16 +159,12 @@ const navStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: 32,
-    height: 24
-  },
-  iconSymbol: {
-    fontSize: 16,
-    fontWeight: '900'
+    height: 26
   },
   activeDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    marginTop: 2
+    marginTop: 3
   }
 });

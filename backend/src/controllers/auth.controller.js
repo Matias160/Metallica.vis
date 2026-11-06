@@ -143,7 +143,8 @@ export async function socialLogin(req, res, next) {
           userId = userRows[0].id;
         } else {
           const baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 30) || 'social_user';
-          const uniqueUsername = `${baseUsername}_${Date.now().toString().slice(-4)}`;
+          const [exists] = await connection.query('SELECT id FROM users WHERE username = ?', [baseUsername]);
+          const uniqueUsername = exists.length > 0 ? `${baseUsername}_${Date.now().toString().slice(-4)}` : baseUsername;
           const [newUser] = await connection.query(
             'INSERT INTO users (username, email, display_name) VALUES (?, ?, ?)',
             [uniqueUsername, email.toLowerCase(), displayName || baseUsername]

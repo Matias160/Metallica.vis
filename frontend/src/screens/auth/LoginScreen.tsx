@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
+import { Feather } from '@expo/vector-icons';
 
 WebBrowser.maybeCompleteAuthSession();
 import { useAuth } from '../../context/AuthContext';
@@ -97,26 +98,15 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
       await new Promise((resolve) => setTimeout(resolve, 400));
 
       // 2. Conectar identidad OAuth con el backend
-      const mockAccounts = {
-        google: {
-          id: `goog_${Date.now()}`,
-          email: 'usuario.google@gmail.com',
-          name: `Usuario Google (${role})`
-        },
-        spotify: {
-          id: `sp_${Date.now()}`,
-          email: 'usuario.spotify@gmail.com',
-          name: `Usuario Spotify (${role})`
-        },
-        github: {
-          id: `gh_${Date.now()}`,
-          email: 'usuario.github@gmail.com',
-          name: `Usuario GitHub (${role})`
-        }
-      };
+      // Si el usuario ingresó un email en el formulario, se vincula a ese email.
+      // Si el campo está vacío, comparte la misma cuenta social única ("social@metallica.vis")
+      // garantizando que Google, Spotify y GitHub compartan la misma sesión y colección sin crear cuentas dispares.
+      const activeEmail = email.trim() ? email.trim().toLowerCase() : 'social@metallica.vis';
+      const cleanIdent = activeEmail.replace(/[^a-zA-Z0-9]/g, '_');
+      const providerId = `${provider}_${cleanIdent}`;
+      const defaultName = activeEmail === 'social@metallica.vis' ? 'Coleccionista Social' : (activeEmail.split('@')[0] || 'Usuario Social');
 
-      const account = mockAccounts[provider] || mockAccounts.google;
-      await socialLogin(provider, account.id, account.email, account.name, role);
+      await socialLogin(provider, providerId, activeEmail, defaultName, role);
       notify('OAuth 2.0 Verificado', `Sesión iniciada con ${provider.toUpperCase()} con perfil de ${role.toUpperCase()}`, 'success');
     } catch (error) {
       console.warn('Error OAuth:', error);
@@ -402,7 +392,10 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
                   onPress={() => openRoleModal('google')}
                   disabled={loading}
                 >
-                  <Text style={[styles.socialText, { color: '#fca5a5' }]}>G Google</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Feather name="globe" size={12} color="#fca5a5" />
+                    <Text style={[styles.socialText, { color: '#fca5a5' }]}>Google</Text>
+                  </View>
                 </Pressable>
 
                 <Pressable
@@ -414,7 +407,10 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
                   onPress={() => openRoleModal('spotify')}
                   disabled={loading}
                 >
-                  <Text style={[styles.socialText, { color: colors.spotify }]}>🎧 Spotify</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Feather name="radio" size={12} color={colors.spotify} />
+                    <Text style={[styles.socialText, { color: colors.spotify }]}>Spotify</Text>
+                  </View>
                 </Pressable>
 
                 <Pressable
@@ -426,7 +422,10 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
                   onPress={() => openRoleModal('github')}
                   disabled={loading}
                 >
-                  <Text style={[styles.socialText, { color: colors.github }]}>🐙 GitHub</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Feather name="terminal" size={12} color={colors.github} />
+                    <Text style={[styles.socialText, { color: colors.github }]}>GitHub</Text>
+                  </View>
                 </Pressable>
               </View>
 
@@ -492,21 +491,24 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
               {[
                 {
                   id: 'collector' as UserRole,
-                  title: '📼 Coleccionista',
+                  title: 'Coleccionista',
                   desc: 'Custodia copias físicas, escucha cintas numeradas y dubbea linajes.',
-                  color: colors.accent
+                  color: colors.accent,
+                  icon: 'archive' as const
                 },
                 {
                   id: 'artist' as UserRole,
-                  title: '🎛️ Artista / Sello',
+                  title: 'Artista / Sello',
                   desc: 'Publica másters, autoriza tiradas limitadas y custodia regalías.',
-                  color: colors.cyan
+                  color: colors.cyan,
+                  icon: 'sliders' as const
                 },
                 {
                   id: 'admin' as UserRole,
-                  title: '🏛️ Archivista',
+                  title: 'Archivista',
                   desc: 'Audita el catálogo histórico, supervisa prensas y verifica autenticidad.',
-                  color: '#a78bfa'
+                  color: '#a78bfa',
+                  icon: 'shield' as const
                 }
               ].map((r) => {
                 const isSelected = chosenRole === r.id;
@@ -526,11 +528,17 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
                     onPress={() => setChosenRole(r.id)}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ color: isSelected ? r.color : colors.text, fontWeight: '900', fontSize: 14 }}>
-                        {r.title}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                        <Feather name={r.icon} size={15} color={isSelected ? r.color : colors.muted} />
+                        <Text style={{ color: isSelected ? r.color : colors.text, fontWeight: '900', fontSize: 14 }}>
+                          {r.title}
+                        </Text>
+                      </View>
                       {isSelected ? (
-                        <Text style={{ color: r.color, fontWeight: '900', fontSize: 11 }}>✓ SELECCIONADO</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Feather name="check" size={12} color={r.color} />
+                          <Text style={{ color: r.color, fontWeight: '900', fontSize: 10 }}>SELECCIONADO</Text>
+                        </View>
                       ) : null}
                     </View>
                     <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 15 }}>{r.desc}</Text>
