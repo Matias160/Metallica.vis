@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -240,15 +241,28 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
 
                 {/* Cabecera de la Pista */}
                 <View style={styles.cardHeader}>
-                  {/* Cassette Sleeve Graphic con Carretes */}
-                  <View style={[styles.cassetteThumb, { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle }]}>
-                    <View style={styles.tapeSpools}>
-                      <View style={[styles.tapeSpool, { borderColor: palette.accent }]} />
-                      <View style={[styles.tapeWindow, { backgroundColor: palette.surfaceLight }]} />
-                      <View style={[styles.tapeSpool, { borderColor: palette.accent }]} />
+                  {item.cover_url ? (
+                    <View style={styles.albumArtWrapper}>
+                      <Image
+                        source={{ uri: item.cover_url }}
+                        style={styles.albumCoverImage}
+                        resizeMode="cover"
+                      />
+                      <View style={[styles.albumArtOverlay, { borderColor: palette.borderSubtle }]} />
+                      {/* Borde sutil de disco asomando */}
+                      <View style={[styles.vinylPeekEdge, { backgroundColor: '#07090e', borderColor: palette.border }]} />
                     </View>
-                    <Text style={[styles.tapeThumbText, { color: palette.muted }]}>REEL</Text>
-                  </View>
+                  ) : (
+                    /* Cassette Sleeve Graphic con Carretes (Fallback) */
+                    <View style={[styles.cassetteThumb, { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle }]}>
+                      <View style={styles.tapeSpools}>
+                        <View style={[styles.tapeSpool, { borderColor: palette.accent }]} />
+                        <View style={[styles.tapeWindow, { backgroundColor: palette.surfaceLight }]} />
+                        <View style={[styles.tapeSpool, { borderColor: palette.accent }]} />
+                      </View>
+                      <Text style={[styles.tapeThumbText, { color: palette.muted }]}>REEL</Text>
+                    </View>
+                  )}
 
                   <View style={styles.trackInfo}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -565,6 +579,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14
+  },
+  albumArtWrapper: {
+    position: 'relative',
+    width: 62,
+    height: 62,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  albumCoverImage: {
+    width: 58,
+    height: 58,
+    borderRadius: 8,
+    zIndex: 2,
+    backgroundColor: '#121622'
+  },
+  albumArtOverlay: {
+    position: 'absolute',
+    width: 58,
+    height: 58,
+    borderRadius: 8,
+    borderWidth: 1,
+    zIndex: 3,
+    pointerEvents: 'none'
+  },
+  vinylPeekEdge: {
+    position: 'absolute',
+    right: -4,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 1,
+    zIndex: 1,
+    opacity: 0.6
   },
   cassetteThumb: {
     width: 56,

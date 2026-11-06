@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Animated,
   FlatList,
+  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -429,10 +430,20 @@ export default function CollectionScreen(): React.JSX.Element {
                             </View>
                           )}
 
-                          <View style={styles.spineWindow}>
-                            <View style={[styles.miniSpool, isPlaying && styles.miniSpoolPlaying]} />
-                            <View style={[styles.miniSpool, isPlaying && styles.miniSpoolPlaying]} />
-                          </View>
+                          {item.cover_url ? (
+                            <View style={styles.spineCoverThumbBox}>
+                              <Image
+                                source={{ uri: item.cover_url }}
+                                style={styles.spineCoverThumb}
+                                resizeMode="cover"
+                              />
+                            </View>
+                          ) : (
+                            <View style={styles.spineWindow}>
+                              <View style={[styles.miniSpool, isPlaying && styles.miniSpoolPlaying]} />
+                              <View style={[styles.miniSpool, isPlaying && styles.miniSpoolPlaying]} />
+                            </View>
+                          )}
 
                           <Text style={[styles.spineTitle, { color: palette.text }]} numberOfLines={1}>
                             {item.track_title}
@@ -468,9 +479,22 @@ export default function CollectionScreen(): React.JSX.Element {
                             shadows.md
                           ]}
                         >
-                          <View style={styles.sleeveGroovesPreview}>
-                            <View style={styles.vinylEdgeCircle} />
-                          </View>
+                          {item.cover_url ? (
+                            <View style={styles.sleeveCoverContainer}>
+                              <Image
+                                source={{ uri: item.cover_url }}
+                                style={styles.sleeveCoverImage}
+                                resizeMode="cover"
+                              />
+                              <View style={styles.sleeveGroovesOverlay}>
+                                <View style={styles.vinylEdgeCircle} />
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={styles.sleeveGroovesPreview}>
+                              <View style={styles.vinylEdgeCircle} />
+                            </View>
+                          )}
 
                           <Text style={[styles.sleeveTitle, { color: palette.text }]} numberOfLines={1}>
                             {item.track_title}
@@ -572,17 +596,26 @@ export default function CollectionScreen(): React.JSX.Element {
                   </View>
 
                   <View style={styles.tapeLabelArea}>
-                    <Text style={[styles.trackTitle, { color: palette.text }]}>{item.track_title}</Text>
-                    <View style={styles.tapeBadgeRow}>
-                      <View style={[styles.copyBadge, { backgroundColor: palette.surfaceLight }]}>
-                        <Text style={[styles.copyBadgeText, { color: palette.textSecondary }]}>
-                          COPIA #{item.copy_number}
-                        </Text>
-                      </View>
-                      <View style={[styles.genBadge, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}>
-                        <Text style={[styles.genBadgeText, { color: palette.cyan }]}>
-                          GENERACIÓN {item.generation}
-                        </Text>
+                    {item.cover_url ? (
+                      <Image
+                        source={{ uri: item.cover_url }}
+                        style={styles.deckListCoverThumb}
+                        resizeMode="cover"
+                      />
+                    ) : null}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.trackTitle, { color: palette.text }]}>{item.track_title}</Text>
+                      <View style={styles.tapeBadgeRow}>
+                        <View style={[styles.copyBadge, { backgroundColor: palette.surfaceLight }]}>
+                          <Text style={[styles.copyBadgeText, { color: palette.textSecondary }]}>
+                            COPIA #{item.copy_number}
+                          </Text>
+                        </View>
+                        <View style={[styles.genBadge, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}>
+                          <Text style={[styles.genBadgeText, { color: palette.cyan }]}>
+                            GENERACIÓN {item.generation}
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -703,6 +736,17 @@ export default function CollectionScreen(): React.JSX.Element {
 
                 {/* Vista Principal de la Cinta/Vinilo Inspeccionado */}
                 <View style={[styles.bigCassettePreview, { backgroundColor: palette.surfaceDark, borderColor: palette.border }]}>
+                  {inspectedCopy.cover_url ? (
+                    <View style={styles.inspectedArtworkWrapper}>
+                      <Image
+                        source={{ uri: inspectedCopy.cover_url }}
+                        style={styles.inspectedArtworkImage}
+                        resizeMode="cover"
+                      />
+                      <View style={[styles.inspectedVinylRim, { borderColor: palette.accent }]} />
+                    </View>
+                  ) : null}
+
                   <Text style={[styles.inspectedTrackTitle, { color: palette.text }]}>
                     {inspectedCopy.track_title}
                   </Text>
@@ -1218,6 +1262,75 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3
+  },
+  spineCoverThumbBox: {
+    height: 38,
+    borderRadius: 4,
+    overflow: 'hidden',
+    backgroundColor: '#0a0d14',
+    borderWidth: 1,
+    borderColor: '#22293a'
+  },
+  spineCoverThumb: {
+    width: '100%',
+    height: '100%'
+  },
+  sleeveCoverContainer: {
+    width: '100%',
+    height: 60,
+    borderRadius: 6,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#0a0d14'
+  },
+  sleeveCoverImage: {
+    width: '100%',
+    height: '100%'
+  },
+  sleeveGroovesOverlay: {
+    position: 'absolute',
+    right: -20,
+    top: 5,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#38bdf8',
+    opacity: 0.4
+  },
+  deckListCoverThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 6,
+    marginRight: 10,
+    backgroundColor: '#0a0d14',
+    borderWidth: 1,
+    borderColor: '#242b3d'
+  },
+  inspectedArtworkWrapper: {
+    width: 130,
+    height: 130,
+    borderRadius: 14,
+    overflow: 'hidden',
+    position: 'relative',
+    marginVertical: 10,
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 8
+  },
+  inspectedArtworkImage: {
+    width: '100%',
+    height: '100%'
+  },
+  inspectedVinylRim: {
+    position: 'absolute',
+    inset: 0,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    opacity: 0.8
   },
   vinylSleeveBox: {
     width: 86,

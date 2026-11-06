@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import {
   FlatList,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -26,9 +27,10 @@ export interface MuseumPiece {
   curatorBadge: string;
   authenticityHash: string;
   audioUrl: string;
+  coverUrl?: string;
 }
 
-// Piezas históricas preservadas en el museo
+// Piezas históricas preservadas en el museo con carátulas de alta resolución
 const MUSEUM_PIECES: MuseumPiece[] = [
   {
     id: 'm1',
@@ -41,7 +43,8 @@ const MUSEUM_PIECES: MuseumPiece[] = [
     soundSpec: 'Mono Soundboard Mix · Calidad Histórica',
     curatorBadge: 'PIEZA PATRIMONIAL #001',
     authenticityHash: 'SHA-HISTORIC-1982-NLTL-001-ALPHA',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    coverUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Features124/v4/73/06/19/73061928-34a2-6462-963a-039203d507fe/dj.cloeijsr.png/600x600bb.jpg'
   },
   {
     id: 'm2',
@@ -54,7 +57,8 @@ const MUSEUM_PIECES: MuseumPiece[] = [
     soundSpec: 'Stereo 24-Track Rehearsal · Sin compresión digital',
     curatorBadge: 'PIEZA PATRIMONIAL #002',
     authenticityHash: 'SHA-HISTORIC-1984-RTL-002-BETA',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3'
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    coverUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Features125/v4/0f/7a/74/0f7a7472-92fa-e77d-384a-1e4304705e83/dj.jbiruenb.png/600x600bb.jpg'
   },
   {
     id: 'm3',
@@ -67,7 +71,8 @@ const MUSEUM_PIECES: MuseumPiece[] = [
     soundSpec: 'Soundboard Master Direct · Espectro 20Hz-20kHz',
     curatorBadge: 'PIEZA PATRIMONIAL #003',
     authenticityHash: 'SHA-HISTORIC-1986-MOP-003-GAMMA',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3'
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    coverUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/b8/5a/82/b85a8259-60d9-bfaa-770a-2baac8380e87/858978005196.png/600x600bb.jpg'
   },
   {
     id: 'm4',
@@ -80,7 +85,36 @@ const MUSEUM_PIECES: MuseumPiece[] = [
     soundSpec: 'Garage Sound Direct · Raw Energy',
     curatorBadge: 'PIEZA PATRIMONIAL #004',
     authenticityHash: 'SHA-HISTORIC-1987-GD-004-DELTA',
-    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+    coverUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/b5/f3/83/b5f38312-5b95-9a09-fcb9-5622dd5ea077/858978005820.png/600x600bb.jpg'
+  },
+  {
+    id: 'm5',
+    title: 'Metallica (The Black Album 1991 Studio Masters)',
+    year: '1991',
+    category: 'MÁSTER ANALÓGICO',
+    type: 'Master Reel · 30 IPS Bobina Abierta',
+    curatorialNotes:
+      'Grabado en One on One Studios con producción de Bob Rock. El estándar dorado de compresión magnética pesada y frecuencias graves ultranítidas.',
+    soundSpec: 'Master Reel 2" · Calidad Máxima de Estudio',
+    curatorBadge: 'PIEZA PATRIMONIAL #005',
+    authenticityHash: 'SHA-HISTORIC-1991-BA-005-EPSILON',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+    coverUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/2e/94/95/2e9495d7-dfe3-ddc8-87ef-6ef797a60218/850007452056.png/600x600bb.jpg'
+  },
+  {
+    id: 'm6',
+    title: 'Megadeth - Rust in Peace (1990 Rough Mix Tape)',
+    year: '1990',
+    category: 'SPEED/THRASH MASTER',
+    type: 'Metal Type IV · Polar Studio',
+    curatorialNotes:
+      'Cinta de mezcla preliminar de Rust in Peace. Pistas de guitarra aisladas de Marty Friedman y Dave Mustaine antes de los cortes finales de masterización.',
+    soundSpec: 'Stereo Soundboard Raw · Velocidad 240 BPM',
+    curatorBadge: 'PIEZA PATRIMONIAL #006',
+    authenticityHash: 'SHA-HISTORIC-1990-RIP-006-ZETA',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
+    coverUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/1d/98/fa/1d98fa0e-9d9f-b259-12c7-dca7ef1f6fa8/13UABIM52455.rgb.jpg/600x600bb.jpg'
   }
 ];
 
@@ -262,10 +296,25 @@ export default function MuseumScreen({ navigation }) {
                     <Text style={[styles.pieceYear, { color: palette.muted }]}>{piece.year}</Text>
                   </View>
 
-                  <Text style={[styles.pieceTitle, { color: palette.text }]}>{piece.title}</Text>
-                  <Text style={[styles.pieceCategory, { color: palette.cyan }]}>
-                    {piece.category} · <Text style={{ color: palette.muted }}>{piece.type}</Text>
-                  </Text>
+                  <View style={styles.pieceMainRow}>
+                    {piece.coverUrl ? (
+                      <View style={styles.pieceCoverBox}>
+                        <Image
+                          source={{ uri: piece.coverUrl }}
+                          style={styles.pieceCoverImage}
+                          resizeMode="cover"
+                        />
+                        <View style={styles.pieceCoverVinylEdge} />
+                      </View>
+                    ) : null}
+
+                    <View style={styles.pieceInfoCol}>
+                      <Text style={[styles.pieceTitle, { color: palette.text }]}>{piece.title}</Text>
+                      <Text style={[styles.pieceCategory, { color: palette.cyan }]}>
+                        {piece.category} · <Text style={{ color: palette.muted }}>{piece.type}</Text>
+                      </Text>
+                    </View>
+                  </View>
 
                   <Text style={[styles.pieceNotes, { color: palette.textSecondary }]}>
                     {piece.curatorialNotes}
@@ -413,6 +462,16 @@ export default function MuseumScreen({ navigation }) {
               <Text style={[styles.modalBadge, { color: palette.accent }]}>
                 FICHA TÉCNICA Y CURATORIAL
               </Text>
+              {selectedPiece?.coverUrl ? (
+                <View style={styles.modalCoverBox}>
+                  <Image
+                    source={{ uri: selectedPiece.coverUrl }}
+                    style={styles.modalCoverImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.modalVinylGrooves} />
+                </View>
+              ) : null}
               <Text style={[styles.modalTitle, { color: palette.text }]}>
                 {selectedPiece?.title}
               </Text>
@@ -591,6 +650,70 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8
+  },
+  pieceMainRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 6
+  },
+  pieceCoverBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 8,
+    position: 'relative',
+    backgroundColor: '#0a0d14'
+  },
+  pieceCoverImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)'
+  },
+  pieceCoverVinylEdge: {
+    position: 'absolute',
+    right: -4,
+    top: 6,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    opacity: 0.25,
+    zIndex: -1
+  },
+  pieceInfoCol: {
+    flex: 1
+  },
+  modalCoverBox: {
+    width: 140,
+    height: 140,
+    borderRadius: 12,
+    alignSelf: 'center',
+    marginVertical: 12,
+    position: 'relative',
+    backgroundColor: '#0a0d14',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.7,
+    shadowRadius: 12,
+    elevation: 8
+  },
+  modalCoverImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)'
+  },
+  modalVinylGrooves: {
+    position: 'absolute',
+    inset: -6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#38bdf8',
+    opacity: 0.3
   },
   curatorBadge: {
     borderWidth: 1,

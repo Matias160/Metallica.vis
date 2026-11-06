@@ -24,28 +24,12 @@ WHERE u.email = 'admin@metallica.vis' AND r.name = 'admin'
 ON DUPLICATE KEY UPDATE user_id = user_id;
 
 INSERT INTO artists (owner_user_id, name, biography, verified)
-SELECT id, 'Demo Sello', 'Sello de prueba para recorrer el flujo de metallica.vis.', TRUE
+SELECT id, 'Elektra & Megaforce Vaults', 'Archivo histórico oficial de cintas máster y prensajes analógicos originales.', TRUE
 FROM users WHERE email = 'artist@metallica.vis'
-AND NOT EXISTS (SELECT 1 FROM artists WHERE name = 'Demo Sello');
+AND NOT EXISTS (SELECT 1 FROM artists WHERE name = 'Elektra & Megaforce Vaults');
 
-INSERT INTO tracks (artist_id, title, description, audio_url, license_type)
-SELECT id, 'Ashes on Magnetic Tape', 'Pista de demostración autorizada.', 'https://example.com/audio/ashes-on-magnetic-tape.mp3', 'demo'
-FROM artists WHERE name = 'Demo Sello'
-AND NOT EXISTS (SELECT 1 FROM tracks WHERE title = 'Ashes on Magnetic Tape');
-
-INSERT INTO pressings (track_id, total_copies, available_copies, generation_limit, status)
-SELECT id, 10, 10, 5, 'active'
-FROM tracks WHERE title = 'Ashes on Magnetic Tape'
-AND NOT EXISTS (SELECT 1 FROM pressings WHERE track_id = id);
-
-INSERT INTO copies (pressing_id, copy_number)
-SELECT p.id, numbers.number
-FROM pressings p
-JOIN (SELECT 1 number UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
-      UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10) numbers
-WHERE NOT EXISTS (SELECT 1 FROM copies c WHERE c.pressing_id = p.id);
-
-UPDATE copies c
-JOIN users u ON u.email = 'collector@metallica.vis'
-SET c.current_owner_id = u.id, c.status = 'owned'
-WHERE c.copy_number = 1 AND c.pressing_id = 1 AND c.current_owner_id IS NULL;
+-- Pistas icónicas de Metal con arte de tapa oficial
+INSERT INTO tracks (artist_id, title, description, cover_url, audio_url, duration_seconds, is_featured)
+SELECT a.id, 'Master of Puppets (Soundboard Master Reel 1986)', 'Toma directa de consola Soundboard 1986. Prensaje máster en cinta Metal Type IV.', 'https://is1-ssl.mzstatic.com/image/thumb/Music114/v4/b8/5a/82/b85a8259-60d9-bfaa-770a-2baac8380e87/858978005196.png/600x600bb.jpg', 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', 515, TRUE
+FROM artists a WHERE a.owner_user_id = (SELECT id FROM users WHERE email = 'artist@metallica.vis' LIMIT 1)
+AND NOT EXISTS (SELECT 1 FROM tracks WHERE title LIKE '%Master of Puppets%');
