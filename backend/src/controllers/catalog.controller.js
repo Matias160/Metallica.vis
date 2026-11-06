@@ -20,9 +20,15 @@ export async function createArtist(req, res, next) {
 
 export async function verifyArtist(req, res, next) {
   try {
-    const [result] = await pool.query('UPDATE artists SET verified = TRUE WHERE id = ?', [req.params.id]);
-    if (!result.affectedRows) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Artista inexistente' } });
-    res.json({ message: 'Artista verificado correctamente' });
+    const { id } = req.params;
+    const [rows] = await pool.query('SELECT verified, name FROM artists WHERE id = ?', [id]);
+    if (!rows[0]) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Artista inexistente' } });
+    const newVerified = !rows[0].verified;
+    await pool.query('UPDATE artists SET verified = ? WHERE id = ?', [newVerified, id]);
+    res.json({
+      message: `Sello "${rows[0].name}" ${newVerified ? 'certificado como Sello Verificado' : 'desmarcado de verificación'}`,
+      verified: newVerified
+    });
   } catch (error) { next(error); }
 }
 
@@ -136,19 +142,35 @@ export async function deleteTrack(req, res, next) {
       return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'No tenés permisos para eliminar esta pista' } });
     }
 
+    const isAdmin = req.auth.roles?.includes('admin');
     const [ownedCopies] = await connection.query(
       `SELECT c.id FROM copies c JOIN pressings p ON p.id = c.pressing_id WHERE p.track_id = ? AND c.status IN ('owned', 'transferred')`,
       [id]
     );
-    if (ownedCopies.length > 0) {
+
+    if (ownedCopies.length > 0 && !isAdmin) {
       return res.status(422).json({ error: { code: 'TRACK_HAS_CIRCULATION', message: 'No podés eliminar una pista con copias en circulación' } });
     }
 
-    await connection.query(`DELETE c FROM copies c JOIN pressings p ON p.id = c.pressing_id WHERE p.track_id = ?`, [id]);
-    await connection.query('DELETE FROM pressings WHERE track_id = ?', [id]);
+    const [pressings] = await connection.query('SELECT id FROM pressings WHERE track_id = ?', [id]);
+    const pressingIds = pressings.map(p => p.id);
+
+    if (pressingIds.length > 0) {
+      const [copies] = await connection.query('SELECT id FROM copies WHERE pressing_id IN (?)', [pressingIds]);
+      const copyIds = copies.map(c => c.id);
+
+      if (copyIds.length > 0) {
+        await connection.query('DELETE FROM playback_history WHERE copy_id IN (?)', [copyIds]);
+        await connection.query('DELETE FROM lineage WHERE parent_copy_id IN (?) OR child_copy_id IN (?)', [copyIds, copyIds]);
+        await connection.query('DELETE FROM copies WHERE id IN (?)', [copyIds]);
+      }
+
+      await connection.query('DELETE FROM pressings WHERE id IN (?)', [pressingIds]);
+    }
+
     await connection.query('DELETE FROM tracks WHERE id = ?', [id]);
     await connection.commit();
-    res.json({ message: 'Pista eliminada correctamente' });
+    res.json({ message: `Pista "${track.title}" eliminada correctamente` });
   } catch (error) {
     await connection.rollback();
     next(error);

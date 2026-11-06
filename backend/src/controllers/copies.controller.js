@@ -44,26 +44,86 @@ export async function playCopy(req, res, next) {
 export async function dubCopy(req, res, next) {
   const connection = await pool.getConnection();
   try {
-    const { recipientUserId } = req.body;
-    if (!recipientUserId) return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'recipientUserId es obligatorio' } });
+    const { recipientUserId, recipientUsername } = req.body;
+    const targetQuery = recipientUsername || recipientUserId;
+    if (!targetQuery) {
+      return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Destinatario requerido (ID, @usuario o email)' } });
+    }
+
     await connection.beginTransaction();
-    const [rows] = await connection.query(`SELECT c.*, p.generation_limit FROM copies c JOIN pressings p ON p.id = c.pressing_id WHERE c.id = ? FOR UPDATE`, [req.params.id]);
+    const [rows] = await connection.query(
+      `SELECT c.*, p.generation_limit FROM copies c JOIN pressings p ON p.id = c.pressing_id WHERE c.id = ? FOR UPDATE`,
+      [req.params.id]
+    );
     const parent = rows[0];
     if (!parent) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Copia inexistente' } });
-    if (parent.current_owner_id !== req.auth.sub || parent.status !== 'owned') return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Solo podés dubbear una copia que poseés' } });
-    if (parent.generation >= parent.generation_limit) return res.status(422).json({ error: { code: 'GENERATION_LIMIT', message: 'La copia alcanzó el límite de generaciones' } });
-    const [recipients] = await connection.query('SELECT id, is_active FROM users WHERE id = ?', [recipientUserId]);
-    if (!recipients[0] || !recipients[0].is_active) return res.status(404).json({ error: { code: 'RECIPIENT_NOT_FOUND', message: 'El destinatario no existe o está inactivo' } });
+    if (parent.current_owner_id !== req.auth.sub || parent.status !== 'owned') {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Solo podés dubbear una copia que poseés' } });
+    }
+    if (parent.generation >= parent.generation_limit) {
+      return res.status(422).json({ error: { code: 'GENERATION_LIMIT', message: `La copia alcanzó el límite de generaciones (Gen ${parent.generation_limit})` } });
+    }
+
+    // Resolver usuario destinatario por ID numérico, username o email
+    let recipient;
+    const numId = Number(targetQuery);
+    if (!isNaN(numId) && numId > 0) {
+      const [recById] = await connection.query('SELECT id, is_active, username, display_name FROM users WHERE id = ?', [numId]);
+      recipient = recById[0];
+    }
+    if (!recipient) {
+      const cleanIdent = String(targetQuery).trim().replace(/^@/, '').toLowerCase();
+      const [recByName] = await connection.query(
+        'SELECT id, is_active, username, display_name FROM users WHERE username = ? OR email = ?',
+        [cleanIdent, cleanIdent]
+      );
+      recipient = recByName[0];
+    }
+
+    if (!recipient || !recipient.is_active) {
+      return res.status(404).json({ error: { code: 'RECIPIENT_NOT_FOUND', message: 'El usuario destinatario no existe o está inactivo' } });
+    }
+
+    if (recipient.id === req.auth.sub) {
+      return res.status(400).json({ error: { code: 'SELF_DUB', message: 'No podés dubbearte una cinta a vos mismo' } });
+    }
+
     const childGeneration = parent.generation + 1;
     const childCondition = Math.max(1, 100 - childGeneration * 8);
-    const [child] = await connection.query(`INSERT INTO copies (pressing_id, current_owner_id, parent_copy_id, copy_number, generation, condition_value, status)
-      VALUES (?, ?, ?, ?, ?, ?, 'owned')`, [parent.pressing_id, recipientUserId, parent.id, parent.copy_number, childGeneration, childCondition]);
-    await connection.query("UPDATE copies SET status = 'transferred', current_owner_id = NULL WHERE id = ?", [parent.id]);
-    await connection.query('INSERT INTO lineage (parent_copy_id, child_copy_id, from_user_id, to_user_id, generation) VALUES (?, ?, ?, ?, ?)', [parent.id, child.insertId, req.auth.sub, recipientUserId, childGeneration]);
+
+    // Calcular el siguiente número de copia único para evitar colisión en UNIQUE(pressing_id, copy_number)
+    const [maxCopy] = await connection.query(
+      'SELECT COALESCE(MAX(copy_number), 0) + 1 AS next_num FROM copies WHERE pressing_id = ?',
+      [parent.pressing_id]
+    );
+    const childCopyNumber = maxCopy[0].next_num;
+
+    const [child] = await connection.query(
+      `INSERT INTO copies (pressing_id, current_owner_id, parent_copy_id, copy_number, generation, condition_value, status, playback_count)
+       VALUES (?, ?, ?, ?, ?, ?, 'owned', 0)`,
+      [parent.pressing_id, recipient.id, parent.id, childCopyNumber, childGeneration, childCondition]
+    );
+
+    // En la cultura analógica de dubbeo P2P, el dueño original conserva su cinta máster y el receptor obtiene la copia derivada
+    await connection.query(
+      'INSERT INTO lineage (parent_copy_id, child_copy_id, from_user_id, to_user_id, generation) VALUES (?, ?, ?, ?, ?)',
+      [parent.id, child.insertId, req.auth.sub, recipient.id, childGeneration]
+    );
+
     await connection.commit();
-    res.status(201).json({ message: 'Copia dubbeada correctamente', copyId: child.insertId, generation: childGeneration });
-  } catch (error) { await connection.rollback(); next(error); }
-  finally { connection.release(); }
+    res.status(201).json({
+      message: `Cinta dubbeada con éxito para @${recipient.username}`,
+      copyId: child.insertId,
+      generation: childGeneration,
+      copyNumber: childCopyNumber,
+      recipient: { id: recipient.id, username: recipient.username, displayName: recipient.display_name }
+    });
+  } catch (error) {
+    await connection.rollback();
+    next(error);
+  } finally {
+    connection.release();
+  }
 }
 
 export async function getLineage(req, res, next) {

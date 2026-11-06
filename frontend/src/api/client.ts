@@ -18,20 +18,20 @@ export interface ApiErrorResponse {
 export function getApiBaseUrl(): string {
   if (Platform.OS === 'web') {
     if (typeof window !== 'undefined' && window.location?.hostname) {
-      return `http://${window.location.hostname}:3000/api`;
+      return `http://${window.location.hostname}:3001/api`;
     }
-    return 'http://localhost:3000/api';
+    return 'http://localhost:3001/api';
   }
 
   // 1. Detección dinámica de IP del servidor de desarrollo (Expo Go / Metro)
   const hostUri = (Constants.expoConfig as any)?.hostUri || (Constants.manifest2 as any)?.extra?.expoGo?.debuggerHost;
   if (hostUri) {
     const devHost = hostUri.split(':')[0];
-    if (devHost) return `http://${devHost}:3000/api`;
+    if (devHost) return `http://${devHost}:3001/api`;
   }
 
   // 2. IP actual de la máquina de desarrollo en la red Wi-Fi
-  return 'http://10.0.2.106:3000/api';
+  return 'http://10.0.2.106:3001/api';
 }
 
 type TokenListener = (token: string | null) => void;

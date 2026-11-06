@@ -17,6 +17,11 @@ export interface User {
   created_at?: string;
   ownedCopiesCount?: number;
   owned_copies_count?: number;
+  created_tracks_count?: number;
+  dubs_count?: number;
+  plays_count?: number;
+  artist_verified?: boolean;
+  artist_id?: number | null;
 }
 
 export interface Artist {

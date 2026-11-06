@@ -43,6 +43,7 @@ export default function CollectionScreen(): React.JSX.Element {
   // Selector de vista: 'showcase' (vitrina/estantería) o 'list' (lista detallada)
   const [viewMode, setViewMode] = useState<'showcase' | 'list'>('showcase');
   const [formatFilter, setFormatFilter] = useState<'all' | 'cassette' | 'vinyl' | 'special'>('all');
+  const [sortBy, setSortBy] = useState<'recent' | 'az' | 'za' | 'condition'>('recent');
 
   // Inspección de Vitrina (item seleccionado)
   const [inspectedCopy, setInspectedCopy] = useState<Copy | null>(null);
@@ -202,8 +203,9 @@ export default function CollectionScreen(): React.JSX.Element {
   }
 
   async function executeDub() {
-    if (!recipientUserId.trim()) {
-      notify('Destinatario requerido', 'Ingresá el ID numérico del usuario destinatario.', 'warning');
+    const rawTarget = recipientUserId.trim();
+    if (!rawTarget) {
+      notify('Destinatario requerido', 'Ingresá el usuario, @handle, email o ID del destinatario.', 'warning');
       return;
     }
     try {
@@ -211,16 +213,16 @@ export default function CollectionScreen(): React.JSX.Element {
       const res = await apiRequest(`/copies/${selectedCopyForDub.id}/dub`, {
         method: 'POST',
         token,
-        body: { recipientUserId: Number(recipientUserId) }
+        body: { recipientUserId: rawTarget }
       });
       setDubModalVisible(false);
       notify(
         'Cinta dubbeada con éxito',
-        `La nueva copia de Generación ${res.generation} fue transferida al usuario #${recipientUserId}.`,
+        `La nueva copia de Generación ${res.generation} fue transferida a ${res.newCopy?.owner_name || rawTarget}.`,
         'success'
       );
       await reload();
-    } catch (error) {
+    } catch (error: any) {
       notify('No se pudo dubbear la cinta', error.message, 'error');
     } finally {
       setDubbing(false);
@@ -260,19 +262,37 @@ export default function CollectionScreen(): React.JSX.Element {
     return Math.round(sum / copies.length);
   }, [copies]);
 
-  // Filtrado de formato para la vitrina
+  // Filtrado y ordenamiento por tiempo y A-Z para la vitrina y lista
   const filteredCopies = useMemo(() => {
-    return copies.filter((c, idx) => {
+    const list = copies.filter((c) => {
       // Determinación de formato: casete vs vinilo según índice o copia
       const isVinyl = (c.id % 2 === 0);
-      const isSpecial = (c.generation === 0 || c.copy_number <= 2);
+      const isSpecial = (c.generation === 0 || (c.copy_number ?? 0) <= 2);
 
       if (formatFilter === 'cassette') return !isVinyl;
       if (formatFilter === 'vinyl') return isVinyl;
       if (formatFilter === 'special') return isSpecial;
       return true;
     });
-  }, [copies, formatFilter]);
+
+    return list.sort((a, b) => {
+      const titleA = a.track_title || a.trackTitle || '';
+      const titleB = b.track_title || b.trackTitle || '';
+      if (sortBy === 'az') {
+        return titleA.localeCompare(titleB);
+      }
+      if (sortBy === 'za') {
+        return titleB.localeCompare(titleA);
+      }
+      if (sortBy === 'condition') {
+        return (b.condition_value ?? 100) - (a.condition_value ?? 100);
+      }
+      // 'recent' (más reciente primero)
+      const timeA = new Date(a.created_at || a.createdAt || 0).getTime() || a.id;
+      const timeB = new Date(b.created_at || b.createdAt || 0).getTime() || b.id;
+      return timeB - timeA;
+    });
+  }, [copies, formatFilter, sortBy]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: palette.background }]}>
@@ -408,6 +428,47 @@ export default function CollectionScreen(): React.JSX.Element {
               </Pressable>
             ))}
           </ScrollView>
+
+          {/* Barra de Ordenamiento por Tiempo y A-Z */}
+          <View style={styles.sortBarRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Feather name="bar-chart-2" size={12} color={palette.muted} />
+              <Text style={[styles.sortLabel, { color: palette.muted }]}>ORDEN:</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortScroll}>
+              {[
+                { id: 'recent', label: 'Más Recientes', icon: 'clock' as const },
+                { id: 'az', label: 'A → Z', icon: 'type' as const },
+                { id: 'za', label: 'Z → A', icon: 'type' as const },
+                { id: 'condition', label: 'Mejor Condición (Mint)', icon: 'award' as const }
+              ].map((s) => (
+                <Pressable
+                  key={s.id}
+                  style={[
+                    styles.sortChip,
+                    { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle },
+                    sortBy === s.id && [styles.sortChipActive, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]
+                  ]}
+                  onPress={() => setSortBy(s.id as any)}
+                >
+                  <Feather
+                    name={s.icon}
+                    size={10}
+                    color={sortBy === s.id ? palette.accent : palette.muted}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={[
+                      styles.sortChipText,
+                      { color: sortBy === s.id ? palette.accent : palette.muted }
+                    ]}
+                  >
+                    {s.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
         </View>
       </View>
 
@@ -964,15 +1025,38 @@ export default function CollectionScreen(): React.JSX.Element {
               </Text>
             </View>
 
-            <Text style={[styles.inputLabel, { color: palette.muted }]}>ID NUMÉRICO DEL USUARIO DESTINATARIO</Text>
+            <Text style={[styles.inputLabel, { color: palette.muted }]}>DESTINATARIO (ID, @USUARIO O EMAIL)</Text>
             <TextInput
-              placeholder="Ej: 2 (el ID figura en su Perfil)"
+              placeholder="Ej: @artista_demo, coleccionista@metallica.vis, o ID 2"
               placeholderTextColor={palette.mutedDark}
-              keyboardType="number-pad"
+              autoCapitalize="none"
+              autoCorrect={false}
               style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
               value={recipientUserId}
               onChangeText={setRecipientUserId}
             />
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+              <Text style={{ fontSize: 9, fontWeight: '700', color: palette.muted }}>SUGERENCIAS RÁPIDAS:</Text>
+              {['@artista_demo', '@coleccionista_demo', '@admin_demo'].map((demo) => (
+                <Pressable
+                  key={demo}
+                  style={{
+                    backgroundColor: recipientUserId === demo ? palette.accentMuted : palette.surfaceDark,
+                    borderColor: recipientUserId === demo ? palette.accent : palette.border,
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4
+                  }}
+                  onPress={() => setRecipientUserId(demo)}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: recipientUserId === demo ? palette.accent : palette.muted }}>
+                    {demo}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
             <View style={styles.modalButtons}>
               <Pressable
@@ -1206,6 +1290,34 @@ const styles = StyleSheet.create({
   },
   formatChipActive: {},
   formatChipText: {
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  sortBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8
+  },
+  sortLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8
+  },
+  sortScroll: {
+    flexDirection: 'row',
+    gap: 6
+  },
+  sortChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1
+  },
+  sortChipActive: {},
+  sortChipText: {
     fontSize: 10,
     fontWeight: '800'
   },

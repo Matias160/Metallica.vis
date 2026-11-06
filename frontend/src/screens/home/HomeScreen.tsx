@@ -6,6 +6,7 @@ import {
   Image,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -36,6 +37,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
   const [claimingId, setClaimingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'recent' | 'az' | 'za' | 'oldest'>('recent');
   const [scannerVisible, setScannerVisible] = useState<boolean>(false);
   const listRef = useRef<FlatList>(null);
   const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
@@ -110,10 +112,10 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
   }
 
   const filteredTracks = useMemo(() => {
-    return tracks.filter((t) => {
+    const list = tracks.filter((t) => {
       const matchesSearch =
         t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.artist_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (t.artist_name && t.artist_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase()));
 
       if (!matchesSearch) return false;
@@ -131,7 +133,26 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
       }
       return true;
     });
-  }, [tracks, pressings, searchQuery, filterType]);
+
+    // Ordenamiento por Tiempo y de A a la Z
+    return list.sort((a, b) => {
+      if (sortBy === 'az') {
+        return a.title.localeCompare(b.title);
+      }
+      if (sortBy === 'za') {
+        return b.title.localeCompare(a.title);
+      }
+      if (sortBy === 'oldest') {
+        const timeA = new Date(a.created_at || a.createdAt || 0).getTime() || a.id;
+        const timeB = new Date(b.created_at || b.createdAt || 0).getTime() || b.id;
+        return timeA - timeB;
+      }
+      // 'recent' (más reciente primero)
+      const timeA = new Date(a.created_at || a.createdAt || 0).getTime() || a.id;
+      const timeB = new Date(b.created_at || b.createdAt || 0).getTime() || b.id;
+      return timeB - timeA;
+    });
+  }, [tracks, pressings, searchQuery, filterType, sortBy]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: palette.background }]}>
@@ -237,6 +258,47 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                 </Text>
               </Pressable>
             ))}
+          </View>
+
+          {/* Barra de Ordenamiento por Tiempo y de A a la Z */}
+          <View style={styles.sortBarRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Feather name="bar-chart-2" size={12} color={palette.muted} />
+              <Text style={[styles.sortLabel, { color: palette.muted }]}>ORDEN:</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortScroll}>
+              {[
+                { id: 'recent', label: 'Más Recientes', icon: 'clock' as const },
+                { id: 'az', label: 'A → Z', icon: 'type' as const },
+                { id: 'za', label: 'Z → A', icon: 'type' as const },
+                { id: 'oldest', label: 'Primeras Tiradas', icon: 'calendar' as const }
+              ].map((s) => (
+                <Pressable
+                  key={s.id}
+                  style={[
+                    styles.sortChip,
+                    { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle },
+                    sortBy === s.id && [styles.sortChipActive, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]
+                  ]}
+                  onPress={() => setSortBy(s.id as any)}
+                >
+                  <Feather
+                    name={s.icon}
+                    size={10}
+                    color={sortBy === s.id ? palette.accent : palette.muted}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={[
+                      styles.sortChipText,
+                      { color: sortBy === s.id ? palette.accent : palette.muted }
+                    ]}
+                  >
+                    {s.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </View>
@@ -596,6 +658,34 @@ const styles = StyleSheet.create({
   filterText: {
     fontSize: 11,
     fontWeight: '700'
+  },
+  sortBarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4
+  },
+  sortLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8
+  },
+  sortScroll: {
+    flexDirection: 'row',
+    gap: 6
+  },
+  sortChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1
+  },
+  sortChipActive: {},
+  sortChipText: {
+    fontSize: 10,
+    fontWeight: '800'
   },
   listContent: {
     padding: 16,

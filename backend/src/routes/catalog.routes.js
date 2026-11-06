@@ -14,9 +14,12 @@ import {
   updateTrack, 
   verifyArtist 
 } from '../controllers/catalog.controller.js';
+import { getUserPublicProfile } from '../controllers/admin.controller.js';
 
 const router = Router();
 router.use(requireAuth);
+
+router.get('/users/:id/profile', getUserPublicProfile);
 
 router.get('/artists', listArtists);
 router.post('/artists', requireRole('artist', 'admin'), createArtist);

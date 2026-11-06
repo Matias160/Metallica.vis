@@ -2,8 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  Platform,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,6 +21,7 @@ import { useSync } from '../../context/SyncContext';
 import { useTheme } from '../../context/ThemeContext';
 import { shadows } from '../../theme/colors';
 import { SystemStats, User, Artist, Track } from '../../types';
+import PublicProfileModal from '../../components/PublicProfileModal';
 
 export default function AdminScreen(): React.JSX.Element {
   const { token } = useAuth();
@@ -36,7 +36,12 @@ export default function AdminScreen(): React.JSX.Element {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [userSearch, setUserSearch] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'all' | 'users' | 'artists' | 'tracks'>('all');
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState<number | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<
+    | { kind: 'delete-track'; track: Track; title: string; message: string; confirmLabel: string }
+    | { kind: 'toggle-user'; user: User; title: string; message: string; confirmLabel: string }
+    | null
+  >(null);
 
   const loadAdminData = useCallback(async () => {
     try {
@@ -83,6 +88,42 @@ export default function AdminScreen(): React.JSX.Element {
     }
   }
 
+  function confirmDeleteTrack(track: Track) {
+    setConfirmDialog({
+      kind: 'delete-track',
+      track,
+      title: 'Eliminar pista definitivamente',
+      message: `¿Estás seguro de eliminar "${track.title}"? Esta acción borrará la pista máster, sus tiradas y sus copias físicas asociadas.`,
+      confirmLabel: 'ELIMINAR PISTA'
+    });
+  }
+
+  async function handleDeleteTrack(track: Track) {
+    try {
+      const res = await apiRequest(`/admin/tracks/${track.id}`, { method: 'DELETE', token });
+      notify('Pista eliminada', res.message || `"${track.title}" ha sido purgada del catálogo máster.`, 'success');
+      await loadAdminData();
+      triggerSync('track_deleted');
+    } catch (err: any) {
+      notify('No se pudo eliminar la pista', err.message, 'error');
+    }
+  }
+
+  async function handleToggleUserLabelVerification(u: User) {
+    try {
+      const res = await apiRequest(`/admin/users/${u.id}/verify-label`, { method: 'POST', token });
+      notify(
+        res.verified ? 'Sello Verificado' : 'Sello Revocado',
+        res.message || `@${u.username} ahora cuenta con distinción de Sello Verificado.`,
+        'success'
+      );
+      await loadAdminData();
+      triggerSync('artist_verified');
+    } catch (err: any) {
+      notify('No se pudo modificar verificación', err.message, 'error');
+    }
+  }
+
   async function handleVerifyArtist(artist: Artist) {
     try {
       await apiRequest(`/artists/${artist.id}/verify`, { method: 'POST', token });
@@ -96,25 +137,23 @@ export default function AdminScreen(): React.JSX.Element {
 
   function confirmToggleStatus(u: User) {
     const isBanning = u.is_active;
-    const title = isBanning ? 'Suspender Miembro' : 'Reactivar Miembro';
-    const message = isBanning
-      ? `¿Confirmás la suspensión de @${u.username}? Se revocarán todas sus sesiones activas.`
-      : `¿Confirmás la reactivación de @${u.username}?`;
+    setConfirmDialog({
+      kind: 'toggle-user',
+      user: u,
+      title: isBanning ? 'Suspender usuario' : 'Reactivar usuario',
+      message: isBanning
+        ? `¿Confirmás la suspensión de @${u.username}? Se revocarán todas sus sesiones activas.`
+        : `¿Confirmás la reactivación de @${u.username}?`,
+      confirmLabel: isBanning ? 'SUSPENDER USUARIO' : 'REACTIVAR USUARIO'
+    });
+  }
 
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm(message)) {
-        handleToggleStatus(u);
-      }
-    } else {
-      Alert.alert(title, message, [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: isBanning ? 'Suspender' : 'Activar',
-          style: isBanning ? 'destructive' : 'default',
-          onPress: () => handleToggleStatus(u)
-        }
-      ]);
-    }
+  async function executeConfirmedAction() {
+    const dialog = confirmDialog;
+    setConfirmDialog(null);
+    if (!dialog) return;
+    if (dialog.kind === 'delete-track') await handleDeleteTrack(dialog.track);
+    if (dialog.kind === 'toggle-user') await handleToggleStatus(dialog.user);
   }
 
   async function handleToggleStatus(u: User) {
@@ -130,16 +169,16 @@ export default function AdminScreen(): React.JSX.Element {
 
   async function handleAssignRole(u: User, newRole: string) {
     try {
-      await apiRequest(`/admin/users/${u.id}/role`, {
+      const res = await apiRequest(`/admin/users/${u.id}/role`, {
         method: 'POST',
         token,
-        body: { role: newRole }
+        body: { role: newRole, action: 'toggle' }
       });
-      notify('Rol asignado', `@${u.username} ahora posee el rol "${newRole.toUpperCase()}".`, 'success');
+      notify('Rol actualizado', res.message || `@${u.username} actualizó su rol "${newRole.toUpperCase()}".`, 'success');
       await loadAdminData();
       triggerSync('user_role_assigned');
     } catch (err: any) {
-      notify('No se pudo asignar el rol', err.message, 'error');
+      notify('No se pudo modificar el rol', err.message, 'error');
     }
   }
 
@@ -310,90 +349,172 @@ export default function AdminScreen(): React.JSX.Element {
                   (u.roles || []).some((r) => r.toLowerCase().includes(q))
                 );
               })
-              .map((u) => (
-                <View
-                  key={u.id}
-                  style={[
-                    styles.userCard,
-                    { backgroundColor: palette.surface, borderColor: palette.border },
-                    shadows.sm
-                  ]}
-                >
-                  <View style={styles.userTop}>
-                    <View style={[styles.avatarMini, { backgroundColor: palette.surfaceDark, borderColor: palette.border }]}>
-                      <Text style={[styles.avatarMiniText, { color: palette.accent }]}>
-                        {(u.display_name || u.username || 'U')[0].toUpperCase()}
-                      </Text>
-                    </View>
+              .map((u) => {
+                const isArtistUser = (u.roles || []).includes('artist') || Boolean(u.artist_id);
+                return (
+                  <View
+                    key={u.id}
+                    style={[
+                      styles.userCard,
+                      { backgroundColor: palette.surface, borderColor: palette.border },
+                      shadows.sm
+                    ]}
+                  >
+                    <View style={styles.userTop}>
+                      <View style={[styles.avatarMini, { backgroundColor: palette.surfaceDark, borderColor: palette.border }]}>
+                        <Text style={[styles.avatarMiniText, { color: palette.accent }]}>
+                          {(u.display_name || u.username || 'U')[0].toUpperCase()}
+                        </Text>
+                      </View>
 
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.userDisplayName, { color: palette.text }]}>{u.display_name}</Text>
-                      <Text style={[styles.userHandle, { color: palette.muted }]}>@{u.username} · {u.email}</Text>
-                      <Text style={[styles.userRoles, { color: palette.textSecondary }]}>
-                        Roles: <Text style={{ color: palette.accent, fontWeight: '800' }}>{u.roles.join(', ') || 'sin rol'}</Text> · {u.owned_copies_count ?? 0} cintas en su estantería
-                      </Text>
-                    </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <Text style={[styles.userDisplayName, { color: palette.text }]}>{u.display_name || u.username}</Text>
+                          {u.artist_verified ? (
+                            <View style={[styles.badgeVerifiedMini, { backgroundColor: palette.successMuted, borderColor: palette.successBorder }]}>
+                              <Feather name="check" size={10} color={palette.success} />
+                              <Text style={[styles.badgeVerifiedMiniText, { color: palette.success }]}>SELLO</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text style={[styles.userHandle, { color: palette.muted }]}>@{u.username} · {u.email}</Text>
+                      </View>
 
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.statusBadge,
-                        u.is_active
-                          ? { backgroundColor: palette.successMuted, borderColor: palette.successBorder }
-                          : { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder },
-                        pressed && { opacity: 0.8 }
-                      ]}
-                      onPress={() => confirmToggleStatus(u)}
-                    >
-                      <Feather
-                        name={u.is_active ? 'check-circle' : 'slash'}
-                        size={11}
-                        color={u.is_active ? palette.success : palette.danger}
-                      />
-                      <Text
-                        style={[
-                          styles.statusText,
-                          { color: u.is_active ? palette.success : palette.danger }
+                      {/* Botón Ver Perfil Ajeno */}
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.viewProfileBtn,
+                          { backgroundColor: palette.surfaceLight, borderColor: palette.border },
+                          pressed && { opacity: 0.75 }
                         ]}
+                        onPress={() => setSelectedProfileUserId(u.id)}
                       >
-                        {u.is_active ? 'ACTIVO' : 'SUSPENDIDO'}
-                      </Text>
-                    </Pressable>
-                  </View>
+                        <Feather name="eye" size={12} color={palette.cyan} />
+                        <Text style={[styles.viewProfileBtnText, { color: palette.cyan }]}>PERFIL</Text>
+                      </Pressable>
 
-                  {/* Botones de Asignación de Rol con Micro-Feedback */}
-                  <View style={[styles.roleAssignment, { borderTopColor: palette.borderSubtle }]}>
-                    <Text style={[styles.roleAssignLabel, { color: palette.muted }]}>ASIGNAR PRIVILEGIOS:</Text>
-                    {[
-                      { id: 'collector', label: 'Coleccionista' },
-                      { id: 'artist', label: 'Artista' },
-                      { id: 'admin', label: 'Admin' }
-                    ].map((r) => {
-                      const hasRole = (u.roles || []).includes(r.id as any);
-                      return (
-                        <Pressable
-                          key={r.id}
-                          style={({ pressed }) => [
-                            styles.roleBtn,
-                            { backgroundColor: palette.surfaceDark, borderColor: palette.border },
-                            hasRole && { borderColor: palette.accentBorder, backgroundColor: palette.accentMuted },
-                            pressed && { opacity: 0.75 }
+                      {/* Estado Activo / Suspendido */}
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.statusBadge,
+                          u.is_active
+                            ? { backgroundColor: palette.successMuted, borderColor: palette.successBorder }
+                            : { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder },
+                          pressed && { opacity: 0.8 }
+                        ]}
+                        onPress={() => confirmToggleStatus(u)}
+                      >
+                        <Feather
+                          name={u.is_active ? 'check-circle' : 'slash'}
+                          size={11}
+                          color={u.is_active ? palette.success : palette.danger}
+                        />
+                        <Text
+                          style={[
+                            styles.statusText,
+                            { color: u.is_active ? palette.success : palette.danger }
                           ]}
-                          onPress={() => handleAssignRole(u, r.id)}
                         >
+                          {u.is_active ? 'ACTIVO' : 'SUSP.'}
+                        </Text>
+                      </Pressable>
+                    </View>
+
+                    {/* Fila de Estadísticas Detalladas del Usuario */}
+                    <View style={[styles.userStatsRow, { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle }]}>
+                      <View style={styles.userStatItem}>
+                        <Feather name="archive" size={11} color={palette.accent} />
+                        <Text style={[styles.userStatValue, { color: palette.text }]}>{u.owned_copies_count ?? 0}</Text>
+                        <Text style={[styles.userStatLabel, { color: palette.muted }]}>Vitrina</Text>
+                      </View>
+                      <View style={styles.userStatItem}>
+                        <Feather name="music" size={11} color={palette.cyan} />
+                        <Text style={[styles.userStatValue, { color: palette.text }]}>{u.created_tracks_count ?? 0}</Text>
+                        <Text style={[styles.userStatLabel, { color: palette.muted }]}>Música</Text>
+                      </View>
+                      <View style={styles.userStatItem}>
+                        <Feather name="share-2" size={11} color="#a78bfa" />
+                        <Text style={[styles.userStatValue, { color: palette.text }]}>{u.dubs_count ?? 0}</Text>
+                        <Text style={[styles.userStatLabel, { color: palette.muted }]}>Dubbeos</Text>
+                      </View>
+                      <View style={styles.userStatItem}>
+                        <Feather name="headphones" size={11} color={palette.success} />
+                        <Text style={[styles.userStatValue, { color: palette.text }]}>{u.plays_count ?? 0}</Text>
+                        <Text style={[styles.userStatLabel, { color: palette.muted }]}>Plays</Text>
+                      </View>
+                    </View>
+
+                    {/* Botones de Asignación Intuitiva de Rol y Verificación de Creador */}
+                    <View style={[styles.roleAssignment, { borderTopColor: palette.borderSubtle }]}>
+                      <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text style={[styles.roleAssignLabel, { color: palette.muted }]}>ROLES:</Text>
+                        {[
+                          { id: 'collector', label: 'Coleccionista' },
+                          { id: 'artist', label: 'Artista / Sello' },
+                          { id: 'admin', label: 'Admin' }
+                        ].map((r) => {
+                          const hasRole = (u.roles || []).includes(r.id as any);
+                          return (
+                            <Pressable
+                              key={r.id}
+                              style={({ pressed }) => [
+                                styles.roleBtn,
+                                { backgroundColor: palette.surfaceDark, borderColor: palette.border },
+                                hasRole && { borderColor: palette.accent, backgroundColor: palette.accentMuted },
+                                pressed && { opacity: 0.75 }
+                              ]}
+                              onPress={() => handleAssignRole(u, r.id)}
+                            >
+                              <Feather
+                                name={hasRole ? 'check-circle' : 'circle'}
+                                size={10}
+                                color={hasRole ? palette.accent : palette.muted}
+                                style={{ marginRight: 4 }}
+                              />
+                              <Text
+                                style={[
+                                  styles.roleBtnText,
+                                  { color: hasRole ? palette.accent : palette.muted, fontWeight: hasRole ? '800' : '600' }
+                                ]}
+                              >
+                                {r.label}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+
+                      {/* Botón Certificar Sello Verificado para Creadores */}
+                      {isArtistUser ? (
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.certifyLabelBtn,
+                            u.artist_verified
+                              ? { backgroundColor: palette.successMuted, borderColor: palette.successBorder }
+                              : { backgroundColor: palette.surfaceLight, borderColor: palette.accentBorder },
+                            pressed && { opacity: 0.8 }
+                          ]}
+                          onPress={() => handleToggleUserLabelVerification(u)}
+                        >
+                          <Feather
+                            name={u.artist_verified ? 'award' : 'check'}
+                            size={11}
+                            color={u.artist_verified ? palette.success : palette.accent}
+                          />
                           <Text
                             style={[
-                              styles.roleBtnText,
-                              { color: hasRole ? palette.accent : palette.muted }
+                              styles.certifyLabelBtnText,
+                              { color: u.artist_verified ? palette.success : palette.accent }
                             ]}
                           >
-                            {r.label}
+                            {u.artist_verified ? 'SELLO VERIFICADO' : 'CERTIFICAR SELLO'}
                           </Text>
                         </Pressable>
-                      );
-                    })}
+                      ) : null}
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
 
             {/* Módulo 2: Gobierno y Verificación de Sellos Discográficos (Nivel 2) */}
             <View style={styles.sectionHeaderRow}>
@@ -473,36 +594,106 @@ export default function AdminScreen(): React.JSX.Element {
                     </Text>
                   </View>
 
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.featuredBtn,
-                      t.is_featured
-                        ? { backgroundColor: palette.accent }
-                        : { backgroundColor: palette.surfaceLight, borderColor: palette.border, borderWidth: 1 },
-                      pressed && { opacity: 0.85 }
-                    ]}
-                    onPress={() => handleToggleFeaturedTrack(t)}
-                  >
-                    <Feather
-                      name={t.is_featured ? 'star' : 'plus-circle'}
-                      size={11}
-                      color={t.is_featured ? palette.background : palette.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.featuredBtnText,
-                        { color: t.is_featured ? palette.background : palette.textSecondary }
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.featuredBtn,
+                        t.is_featured
+                          ? { backgroundColor: palette.accent }
+                          : { backgroundColor: palette.surfaceLight, borderColor: palette.border, borderWidth: 1 },
+                        pressed && { opacity: 0.85 }
                       ]}
+                      onPress={() => handleToggleFeaturedTrack(t)}
                     >
-                      {t.is_featured ? 'DESTACADA' : 'DESTACAR'}
-                    </Text>
-                  </Pressable>
+                      <Feather
+                        name={t.is_featured ? 'star' : 'plus-circle'}
+                        size={11}
+                        color={t.is_featured ? palette.background : palette.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.featuredBtnText,
+                          { color: t.is_featured ? palette.background : palette.textSecondary }
+                        ]}
+                      >
+                        {t.is_featured ? 'DESTACADA' : 'DESTACAR'}
+                      </Text>
+                    </Pressable>
+
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.deleteBtn,
+                        { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder },
+                        pressed && { opacity: 0.8 }
+                      ]}
+                      onPress={() => confirmDeleteTrack(t)}
+                    >
+                      <Feather name="trash-2" size={11} color={palette.danger} />
+                      <Text style={[styles.deleteBtnText, { color: palette.danger }]}>ELIMINAR</Text>
+                    </Pressable>
+                  </View>
                 </View>
               ))
             )}
           </>
         )}
       </ScrollView>
+
+      {/* Modal de Inspección de Perfil Público de Usuario */}
+      <PublicProfileModal
+        visible={Boolean(selectedProfileUserId)}
+        userId={selectedProfileUserId}
+        onClose={() => setSelectedProfileUserId(null)}
+      />
+
+      {/* Confirmación integrada para acciones administrativas sensibles. */}
+      <Modal
+        visible={Boolean(confirmDialog)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmDialog(null)}
+      >
+        <View style={styles.confirmOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setConfirmDialog(null)} />
+          <View
+            style={[
+              styles.confirmCard,
+              { backgroundColor: palette.surface, borderColor: palette.dangerBorder },
+              shadows.md
+            ]}
+          >
+            <View style={[styles.confirmIcon, { backgroundColor: palette.dangerMuted }]}>
+              <Feather name="alert-triangle" size={24} color={palette.danger} />
+            </View>
+            <Text style={[styles.confirmTitle, { color: palette.text }]}>{confirmDialog?.title}</Text>
+            <Text style={[styles.confirmMessage, { color: palette.muted }]}>{confirmDialog?.message}</Text>
+
+            <View style={styles.confirmActions}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.confirmCancel,
+                  { backgroundColor: palette.surfaceLight, borderColor: palette.border },
+                  pressed && { opacity: 0.75 }
+                ]}
+                onPress={() => setConfirmDialog(null)}
+              >
+                <Text style={[styles.confirmCancelText, { color: palette.textSecondary }]}>CANCELAR</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.confirmDanger,
+                  { backgroundColor: palette.danger },
+                  pressed && { opacity: 0.8 }
+                ]}
+                onPress={executeConfirmedAction}
+              >
+                <Feather name="trash-2" size={14} color="#ffffff" />
+                <Text style={styles.confirmDangerText}>{confirmDialog?.confirmLabel}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -510,6 +701,74 @@ export default function AdminScreen(): React.JSX.Element {
 const styles = StyleSheet.create({
   container: {
     flex: 1
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20
+  },
+  confirmCard: {
+    width: '100%',
+    maxWidth: 440,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center'
+  },
+  confirmIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14
+  },
+  confirmTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    textAlign: 'center'
+  },
+  confirmMessage: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginTop: 10
+  },
+  confirmActions: {
+    width: '100%',
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 22
+  },
+  confirmCancel: {
+    flex: 1,
+    minHeight: 46,
+    borderWidth: 1,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  confirmCancelText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.7
+  },
+  confirmDanger: {
+    flex: 1.35,
+    minHeight: 46,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7
+  },
+  confirmDangerText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.5
   },
   topBar: {
     paddingHorizontal: 20,
@@ -796,5 +1055,86 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.4
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1
+  },
+  deleteBtnText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4
+  },
+  badgeVerifiedMini: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1
+  },
+  badgeVerifiedMiniText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5
+  },
+  viewProfileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1
+  },
+  viewProfileBtnText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5
+  },
+  userStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    borderWidth: 1
+  },
+  userStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4
+  },
+  userStatValue: {
+    fontSize: 11,
+    fontWeight: '800'
+  },
+  userStatLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    textTransform: 'uppercase'
+  },
+  certifyLabelBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginLeft: 'auto'
+  },
+  certifyLabelBtnText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5
   }
 });

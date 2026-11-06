@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -85,22 +84,7 @@ export default function ProfileScreen(): React.JSX.Element {
   }
 
   function handleLogoutPrompt() {
-    if (Platform.OS === 'web') {
-      setShowLogoutModal(true);
-    } else {
-      Alert.alert(
-        '¿Cerrar Sesión?',
-        '¿Estás seguro de que deseás cerrar sesión en este dispositivo? Deberás volver a ingresar para acceder a tus cintas.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Cerrar Sesión',
-            style: 'destructive',
-            onPress: () => logout()
-          }
-        ]
-      );
-    }
+    setShowLogoutModal(true);
   }
 
   return (
@@ -173,7 +157,7 @@ export default function ProfileScreen(): React.JSX.Element {
             <Text style={[styles.idLabel, { color: palette.muted }]}>
               TU IDENTIFICADOR ÚNICO DE DUBBEO (P2P ID)
             </Text>
-            <Text style={styles.idValue}>#{user?.id}</Text>
+            <Text style={styles.idValue}>{user?.id}</Text>
             <Text style={[styles.idHint, { color: palette.muted }]}>
               Compartí este número con otros coleccionistas para que te transfieran copias físicas y figuren en tu linaje.
             </Text>
