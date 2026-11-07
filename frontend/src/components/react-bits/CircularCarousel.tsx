@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   Pressable,
   Platform,
@@ -115,8 +116,8 @@ export const CircularCarousel: React.FC<CircularCarouselProps> = ({
               <LinearGradient
                 colors={
                   isCenter
-                    ? ['rgba(245, 158, 11, 0.22)', 'rgba(17, 23, 38, 0.95)']
-                    : ['rgba(30, 41, 59, 0.6)', 'rgba(10, 14, 23, 0.92)']
+                    ? [palette.amberMuted || 'rgba(245, 158, 11, 0.18)', palette.cardElevated || '#172036']
+                    : [palette.surfaceLight || '#172036', palette.card || '#111726']
                 }
                 style={[
                   styles.cardGradient,
@@ -129,15 +130,14 @@ export const CircularCarousel: React.FC<CircularCarouselProps> = ({
                 {/* Portada o Ícono de Museo */}
                 <View style={styles.cardImageArea}>
                   {item.image ? (
-                    <img
-                      src={item.image}
-                      alt={item.title}
+                    <Image
+                      source={{ uri: item.image }}
                       style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover',
-                        borderRadius: '12px'
+                        borderRadius: 12
                       }}
+                      resizeMode="cover"
                     />
                   ) : (
                     <View style={[styles.imagePlaceholder, { backgroundColor: palette.surfaceDark }]}>

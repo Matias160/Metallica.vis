@@ -105,8 +105,8 @@ export const DepthCarousel: React.FC<DepthCarouselProps> = ({
               <LinearGradient
                 colors={
                   isFront
-                    ? ['rgba(23, 32, 54, 0.98)', 'rgba(11, 16, 29, 0.98)']
-                    : ['rgba(17, 23, 38, 0.9)', 'rgba(6, 8, 13, 0.9)']
+                    ? [palette.amberMuted || 'rgba(245, 158, 11, 0.16)', palette.cardElevated || '#172036']
+                    : [palette.surfaceLight || '#172036', palette.card || '#111726']
                 }
                 style={[
                   styles.cardInner,

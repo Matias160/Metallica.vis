@@ -295,17 +295,25 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                 glowColor={palette.borderGlowAmber}
                 style={{ fontSize: isScrolled ? 16 : 21, fontWeight: '800' }}
               />
-              {!isScrolled && (
-                <View style={styles.badgeRow}>
-                  <View style={[styles.liveIndicator, { backgroundColor: palette.accent }]} />
-                  <ShinyText
-                    text="CATÁLOGO MÁSTER"
-                    baseColor={palette.muted}
-                    shimmerColor={palette.accent}
-                    style={styles.badgeRowText}
-                  />
-                </View>
-              )}
+              <View
+                style={[
+                  styles.badgeRow,
+                  Platform.OS === 'web' && ({
+                    opacity: isScrolled ? 0 : 1,
+                    maxWidth: isScrolled ? 0 : 220,
+                    overflow: 'hidden',
+                    transition: 'all 0.35s ease'
+                  } as any)
+                ]}
+              >
+                <View style={[styles.liveIndicator, { backgroundColor: palette.accent }]} />
+                <ShinyText
+                  text="CATÁLOGO MÁSTER"
+                  baseColor={palette.muted}
+                  shimmerColor={palette.accent}
+                  style={styles.badgeRowText}
+                />
+              </View>
             </View>
 
             <View style={styles.headerRightActions}>

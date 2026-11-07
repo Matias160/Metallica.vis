@@ -420,7 +420,7 @@ export default function ArtistScreen(): React.JSX.Element {
           </View>
 
           <Pressable
-            style={[styles.createBtnFull, { backgroundColor: palette.accent }, shadows.glowAccent]}
+            style={[styles.createBtnFull, { backgroundColor: palette.accent, maxWidth: 440, alignSelf: 'center' }, shadows.glowAccent]}
             onPress={openCreateTrack}
           >
             <Text style={[styles.createBtnText, { color: palette.background }]}>
