@@ -10,7 +10,8 @@ import {
   Text,
   TextInput,
   View,
-  Animated
+  Animated,
+  useWindowDimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -69,7 +70,7 @@ function AnimatedStockBar({
   }, [percentage]);
 
   return (
-    <View style={[styles.stockBarTrack, { backgroundColor: palette.surfaceDark || '#090C14' }]}>
+    <View style={[styles.stockBarTrack, { backgroundColor: palette?.surfaceDark || '#0A0E17' }]}>
       <Animated.View
         style={{
           height: '100%',
@@ -107,23 +108,22 @@ function CatalogSkeletonList({ palette }: { palette: any }) {
           key={key}
           style={[
             styles.card,
-            { backgroundColor: palette.surface || '#121624', borderColor: palette.border || '#232B40' }
+            { backgroundColor: palette?.surface || '#111728', borderColor: palette?.border || '#232E47' }
           ]}
         >
           <View style={styles.cardHeader}>
-            <Skeleton width={88} height={88} borderRadius={12} palette={palette} />
+            <Skeleton width={96} height={96} borderRadius={12} palette={palette} />
             <View style={{ flex: 1, marginLeft: 16, gap: 10 }}>
-              <Skeleton width="75%" height={22} borderRadius={6} palette={palette} />
-              <Skeleton width="45%" height={16} borderRadius={4} palette={palette} />
+              <Skeleton width="60%" height={22} borderRadius={6} palette={palette} />
+              <Skeleton width="40%" height={16} borderRadius={4} palette={palette} />
               <Skeleton width="30%" height={14} borderRadius={4} palette={palette} />
             </View>
           </View>
           <View style={{ marginTop: 18, gap: 10 }}>
             <Skeleton width="100%" height={14} borderRadius={4} palette={palette} />
-            <Skeleton width="90%" height={14} borderRadius={4} palette={palette} />
           </View>
           <View style={{ marginTop: 16 }}>
-            <Skeleton width="100%" height={46} borderRadius={10} palette={palette} />
+            <Skeleton width="100%" height={44} borderRadius={10} palette={palette} />
           </View>
         </View>
       ))}
@@ -132,10 +132,12 @@ function CatalogSkeletonList({ palette }: { palette: any }) {
 }
 
 export default function HomeScreen({ navigation }: { navigation: any }): React.JSX.Element {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const { palette, isDark, toggleTheme } = useTheme();
   const { notify } = useFeedback();
   const { syncVersion, triggerSync } = useSync();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 800;
 
   const [tracks, setTracks] = useState<Track[]>([]);
   const [pressings, setPressings] = useState<any[]>([]);
@@ -269,7 +271,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
         style={[
           styles.topBar,
           {
-            backgroundColor: palette.backgroundElevated || palette.surface,
+            backgroundColor: palette.backgroundElevated,
             borderBottomColor: palette.borderSubtle
           }
         ]}
@@ -284,7 +286,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
             </View>
 
             <View style={styles.headerRightActions}>
-              {/* Botón QR con borde y fondo cian sutil */}
+              {/* Botón QR */}
               <Pressable
                 style={[
                   styles.headerBtn,
@@ -324,12 +326,11 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                 </Text>
               </Pressable>
 
-              {/* Contador de Masters con Glow de Telemetría */}
+              {/* Contador de Masters */}
               <View
                 style={[
                   styles.badgeCount,
-                  { backgroundColor: palette.surfaceLight, borderColor: palette.border },
-                  themeTokens.shadows.amberGlow
+                  { backgroundColor: palette.surfaceLight, borderColor: palette.border }
                 ]}
               >
                 <Text style={[styles.badgeCountNumber, { color: palette.accent }]}>
@@ -340,16 +341,11 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
             </View>
           </View>
 
-          {/* Título en degradado visual de estudio */}
+          {/* Título de Cabecera */}
           <View style={styles.titleCol}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={[styles.title, { color: palette.text }]}>Catálogo de Tiradas</Text>
-              <View style={[styles.analogTag, { borderColor: palette.amberBorder, backgroundColor: palette.amberMuted }]}>
-                <Text style={[styles.analogTagText, { color: palette.amber }]}>STUDIO REEL</Text>
-              </View>
-            </View>
+            <Text style={[styles.title, { color: palette.text }]}>Catálogo de Tiradas</Text>
             <Text style={[styles.subtitle, { color: palette.muted }]}>
-              Cintas máster físicas en tiradas estrictamente limitadas, numeradas y custodiadas.
+              Cintas máster físicas en tiradas estrictamente limitadas, numeradas y custodiadas en bodega.
             </Text>
           </View>
         </View>
@@ -360,7 +356,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
             style={[
               styles.searchBox,
               {
-                backgroundColor: palette.surfaceDark || '#090C14',
+                backgroundColor: palette.surfaceDark,
                 borderColor: searchFocused ? palette.accent : palette.border
               },
               searchFocused && themeTokens.shadows.amberGlow
@@ -391,7 +387,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
             ) : null}
           </View>
 
-          {/* Chips de Filtro con Micro-Animación de Selección */}
+          {/* Chips de Filtro con Alto Contraste */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -402,17 +398,17 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
               {
                 id: 'featured',
                 label: `Destacadas (${tracks.filter((t) => t.is_featured).length})`,
-                icon: <Sparkles size={12} color={filterType === 'featured' ? palette.accent : palette.muted} />
+                icon: <Sparkles size={13} color={filterType === 'featured' ? palette.accent : palette.textSecondary} />
               },
               {
                 id: 'available',
                 label: 'En Stock',
-                icon: <Archive size={12} color={filterType === 'available' ? palette.accent : palette.muted} />
+                icon: <Archive size={13} color={filterType === 'available' ? palette.accent : palette.textSecondary} />
               },
               {
                 id: 'verified',
                 label: 'Sellos',
-                icon: <Disc3 size={12} color={filterType === 'verified' ? palette.accent : palette.muted} />
+                icon: <Disc3 size={13} color={filterType === 'verified' ? palette.accent : palette.textSecondary} />
               }
             ].map((f) => (
               <Chip
@@ -441,22 +437,22 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                 {
                   id: 'recent',
                   label: 'Más Recientes',
-                  icon: <Clock size={11} color={sortBy === 'recent' ? palette.accent : palette.muted} />
+                  icon: <Clock size={11} color={sortBy === 'recent' ? palette.accent : palette.textSecondary} />
                 },
                 {
                   id: 'az',
                   label: 'A → Z',
-                  icon: <ArrowDownAZ size={11} color={sortBy === 'az' ? palette.accent : palette.muted} />
+                  icon: <ArrowDownAZ size={11} color={sortBy === 'az' ? palette.accent : palette.textSecondary} />
                 },
                 {
                   id: 'za',
                   label: 'Z → A',
-                  icon: <ArrowUpZA size={11} color={sortBy === 'za' ? palette.accent : palette.muted} />
+                  icon: <ArrowUpZA size={11} color={sortBy === 'za' ? palette.accent : palette.textSecondary} />
                 },
                 {
                   id: 'oldest',
                   label: 'Primeras Tiradas',
-                  icon: <Calendar size={11} color={sortBy === 'oldest' ? palette.accent : palette.muted} />
+                  icon: <Calendar size={11} color={sortBy === 'oldest' ? palette.accent : palette.textSecondary} />
                 }
               ].map((s) => (
                 <Pressable
@@ -466,9 +462,9 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                     {
                       backgroundColor:
                         sortBy === s.id
-                          ? palette.accentMuted || 'rgba(245, 158, 11, 0.15)'
-                          : palette.surfaceDark || '#090C14',
-                      borderColor: sortBy === s.id ? palette.accent : palette.borderSubtle
+                          ? palette.accentMuted
+                          : palette.surfaceLight,
+                      borderColor: sortBy === s.id ? palette.accent : palette.border
                     },
                     sortBy === s.id && themeTokens.shadows.amberGlow
                   ]}
@@ -484,7 +480,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                     style={[
                       styles.sortChipText,
                       {
-                        color: sortBy === s.id ? palette.accent : palette.muted,
+                        color: sortBy === s.id ? palette.accent : palette.textSecondary,
                         fontWeight: sortBy === s.id ? '800' : '600'
                       }
                     ]}
@@ -506,7 +502,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
           ref={listRef}
           data={filteredTracks}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, isDesktop && { paddingBottom: 100 }]}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
@@ -529,18 +525,9 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
               <GlowCard
                 variant={item.is_featured ? 'amberGlow' : 'surface'}
                 palette={palette}
-                style={[
-                  styles.card,
-                  { backgroundColor: palette.surface, borderColor: palette.border }
-                ]}
+                style={styles.card}
               >
-                {/* Tornillos de esquina analógicos de consola */}
-                <View style={[styles.screw, styles.screwTL]} />
-                <View style={[styles.screw, styles.screwTR]} />
-                <View style={[styles.screw, styles.screwBL]} />
-                <View style={[styles.screw, styles.screwBR]} />
-
-                {/* Cabecera de la Pista: Portada de Vinilo / Sleeve Grande */}
+                {/* Cabecera de la Pista: Portada de Vinilo y Metadatos */}
                 <View style={styles.cardHeader}>
                   {item.cover_url ? (
                     <View style={styles.vinylSleeveWrapper}>
@@ -549,7 +536,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                         style={styles.vinylCoverImage}
                         resizeMode="cover"
                       />
-                      {/* Disco de vinilo asomando con surcos */}
+                      {/* Disco de vinilo asomando con surcos analógicos */}
                       <View
                         style={[
                           styles.vinylDiscPeek,
@@ -565,12 +552,12 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                       </View>
                     </View>
                   ) : (
-                    /* Sleeve Analógico con carretes de cinta */
+                    /* Sleeve Analógico de Carrete */
                     <View
                       style={[
                         styles.cassetteThumb,
                         {
-                          backgroundColor: palette.surfaceDark || '#090C14',
+                          backgroundColor: palette.surfaceDark,
                           borderColor: palette.borderSubtle
                         }
                       ]}
@@ -612,7 +599,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                           { backgroundColor: palette.surfaceLight, borderColor: palette.border }
                         ]}
                       >
-                        <Text style={[styles.licenseText, { color: palette.muted }]}>
+                        <Text style={[styles.licenseText, { color: palette.textSecondary }]}>
                           {item.license_type || 'ORIGINAL'}
                         </Text>
                       </View>
@@ -638,90 +625,71 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                   </Text>
                 ) : null}
 
-                {/* Caja de Tirada Física y Barra de Stock */}
+                {/* Caja de Tirada Física y Botón de Adquisición */}
                 {trackPressing ? (
                   <View
                     style={[
                       styles.pressingBox,
                       {
-                        backgroundColor: palette.surfaceDark || '#090C14',
+                        backgroundColor: palette.surfaceDark,
                         borderColor: palette.borderSubtle
-                      }
+                      },
+                      isDesktop && styles.pressingBoxDesktop
                     ]}
                   >
-                    <View style={styles.pressingStats}>
-                      <View style={styles.statCol}>
-                        <Text style={[styles.statLabel, { color: palette.muted }]}>
-                          DISPONIBILIDAD EN BODEGA
-                        </Text>
-                        <Text
-                          style={[
-                            styles.statValue,
-                            { color: isSoldOut ? palette.danger : palette.accent }
-                          ]}
-                        >
-                          {available}{' '}
-                          <Text style={[styles.statTotal, { color: palette.muted }]}>
-                            / {total} CINTAS FÍSICAS
+                    {/* Estadísticas de Stock */}
+                    <View style={[styles.stockInfoCol, isDesktop && { flex: 1, marginRight: 24 }]}>
+                      <View style={styles.pressingStats}>
+                        <View>
+                          <Text style={[styles.statLabel, { color: palette.muted }]}>
+                            DISPONIBILIDAD EN BODEGA
                           </Text>
-                        </Text>
-                      </View>
-
-                      <View style={styles.statRightCol}>
-                        <Text style={[styles.statLabel, { color: palette.muted }]}>
-                          ESTADO DE REPRODUCCIÓN
-                        </Text>
-                        <View
-                          style={[
-                            styles.genLimitBadge,
-                            {
-                              backgroundColor: isSoldOut ? palette.dangerMuted : palette.emeraldMuted || '#062E20',
-                              borderColor: isSoldOut ? palette.dangerBorder : palette.emeraldBorder || '#059669'
-                            }
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.genLimitText,
-                              { color: isSoldOut ? palette.danger : palette.emerald || '#10B981' }
-                            ]}
-                          >
-                            {isSoldOut ? 'BODEGA AGOTADA' : 'CUSTODIA MINT 100%'}
+                          <Text style={[styles.statValue, { color: isSoldOut ? palette.danger : palette.accent }]}>
+                            {available}{' '}
+                            <Text style={[styles.statTotal, { color: palette.textSecondary }]}>
+                              / {total} CINTAS FÍSICAS
+                            </Text>
                           </Text>
                         </View>
+
+                        <Badge
+                          label={isSoldOut ? 'AGOTADA' : 'CUSTODIA MINT 100%'}
+                          variant={isSoldOut ? 'admin' : 'mint'}
+                          palette={palette}
+                        />
                       </View>
+
+                      {/* Barra de Progreso de Stock con Gradiente */}
+                      <AnimatedStockBar
+                        percentage={percentageLeft}
+                        isSoldOut={isSoldOut}
+                        palette={palette}
+                      />
                     </View>
 
-                    {/* Barra de Progreso de Stock con Gradiente Animado */}
-                    <AnimatedStockBar
-                      percentage={percentageLeft}
-                      isSoldOut={isSoldOut}
-                      palette={palette}
-                    />
-
-                    {/* Botón de Adquirir Cinta con Brillo Superior y LinearGradient */}
-                    <View style={{ marginTop: 14 }}>
+                    {/* Botón de Adquirir Proporcionado */}
+                    <View style={[styles.claimBtnWrap, isDesktop && styles.claimBtnWrapDesktop]}>
                       <PremiumButton
                         onPress={() => handleClaim(trackPressing, item.title)}
                         disabled={isSoldOut || Boolean(isClaiming)}
                         variant={isSoldOut ? 'secondary' : 'primary'}
                         size="md"
-                        style={{ width: '100%' }}
+                        style={isDesktop ? { width: 300 } : { width: '100%' }}
                         palette={palette}
                         icon={
                           isClaiming ? null : (
                             <Archive
                               size={15}
-                              color={isSoldOut ? palette.textMuted : '#06080D'}
+                              color={isSoldOut ? palette.muted : '#06080D'}
                             />
                           )
                         }
                       >
                         {isClaiming
-                          ? 'PROCESANDO RECLAMO...'
+                          ? 'PROCESANDO...'
                           : isSoldOut
-                          ? 'TIRADA COMPLETAMENTE AGOTADA'
-                          : 'ADQUIRIR CINTA FÍSICA · NUMERADA'}
+                          ? 'TIRADA AGOTADA'
+                          : 'ADQUIRIR CINTA FÍSICA'}
                       </PremiumButton>
                     </View>
                   </View>
@@ -730,7 +698,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                     style={[
                       styles.noPressingBox,
                       {
-                        backgroundColor: palette.surfaceDark || '#090C14',
+                        backgroundColor: palette.surfaceDark,
                         borderColor: palette.borderSubtle
                       }
                     ]}
@@ -799,9 +767,9 @@ const styles = StyleSheet.create({
     flex: 1
   },
   topBar: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 14,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 16,
     borderBottomWidth: 1
   },
   topBarInner: {
@@ -829,31 +797,20 @@ const styles = StyleSheet.create({
     borderRadius: 4
   },
   badgeRowText: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.2
   },
   title: {
-    fontSize: 25,
+    fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.6
   },
-  analogTag: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1
-  },
-  analogTagText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.8
-  },
   subtitle: {
-    fontSize: 13,
+    fontSize: 13.5,
     marginTop: 4,
-    lineHeight: 18,
-    maxWidth: 480
+    lineHeight: 19,
+    maxWidth: 600
   },
   headerRightActions: {
     flexDirection: 'row',
@@ -863,20 +820,20 @@ const styles = StyleSheet.create({
   headerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     borderWidth: 1,
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 7,
     borderRadius: 8
   },
   headerBtnText: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '800',
     letterSpacing: 0.5
   },
   badgeCount: {
     borderWidth: 1,
-    paddingHorizontal: 11,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
     alignItems: 'center',
@@ -888,7 +845,7 @@ const styles = StyleSheet.create({
     lineHeight: 17
   },
   badgeCountLabel: {
-    fontSize: 7.5,
+    fontSize: 8,
     fontWeight: '800',
     letterSpacing: 0.6
   },
@@ -897,7 +854,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     marginTop: 14,
-    gap: 10
+    gap: 12
   },
   searchBox: {
     flexDirection: 'row',
@@ -905,11 +862,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.2,
     paddingHorizontal: 14,
-    paddingVertical: 9
+    paddingVertical: 10
   },
   searchInput: {
     flex: 1,
-    fontSize: 13.5,
+    fontSize: 14,
     padding: 0
   },
   filtersScroll: {
@@ -920,38 +877,37 @@ const styles = StyleSheet.create({
   sortBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 2
+    gap: 10
   },
   sortLabel: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.8
   },
   sortScroll: {
     flexDirection: 'row',
-    gap: 6
+    gap: 8
   },
   sortChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 6.5,
     borderRadius: 8,
     borderWidth: 1
   },
   sortChipText: {
-    fontSize: 10.5
+    fontSize: 11
   },
   listContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 40,
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center'
   },
   skeletonContainer: {
-    padding: 16,
+    padding: 20,
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center',
@@ -959,49 +915,35 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: 18,
-    padding: 20,
-    marginBottom: 16,
-    position: 'relative'
+    padding: 22,
+    marginBottom: 18
   },
-  screw: {
-    position: 'absolute',
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#323C52',
-    borderWidth: 1,
-    borderColor: '#151924'
-  },
-  screwTL: { top: 9, left: 9 },
-  screwTR: { top: 9, right: 9 },
-  screwBL: { bottom: 9, left: 9 },
-  screwBR: { bottom: 9, right: 9 },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16
+    alignItems: 'flex-start',
+    gap: 18
   },
   vinylSleeveWrapper: {
     position: 'relative',
-    width: 86,
-    height: 86,
+    width: 96,
+    height: 96,
     justifyContent: 'center'
   },
   vinylCoverImage: {
-    width: 78,
-    height: 78,
-    borderRadius: 10,
+    width: 88,
+    height: 88,
+    borderRadius: 12,
     zIndex: 2,
     backgroundColor: '#121622',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)'
+    borderColor: 'rgba(255, 255, 255, 0.12)'
   },
   vinylDiscPeek: {
     position: 'absolute',
     right: -4,
-    width: 74,
-    height: 74,
-    borderRadius: 37,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     borderWidth: 1.5,
     zIndex: 1,
     alignItems: 'center',
@@ -1009,31 +951,31 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 4, height: 2 },
     shadowOpacity: 0.6,
-    shadowRadius: 5
+    shadowRadius: 6
   },
   vinylGroove: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     borderWidth: 1
   },
   vinylGrooveInner: {
     position: 'absolute',
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1
   },
   vinylLabelCenter: {
     position: 'absolute',
-    width: 18,
-    height: 18,
-    borderRadius: 9
+    width: 20,
+    height: 20,
+    borderRadius: 10
   },
   cassetteThumb: {
-    width: 80,
-    height: 74,
-    borderRadius: 10,
+    width: 88,
+    height: 80,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1045,18 +987,18 @@ const styles = StyleSheet.create({
     gap: 6
   },
   tapeSpool: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     borderWidth: 2
   },
   tapeWindow: {
-    width: 16,
-    height: 7,
+    width: 18,
+    height: 8,
     borderRadius: 2
   },
   tapeThumbText: {
-    fontSize: 8,
+    fontSize: 8.5,
     fontWeight: '800',
     marginTop: 6,
     letterSpacing: 0.8
@@ -1071,7 +1013,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap'
   },
   trackTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
     letterSpacing: -0.4,
     flexShrink: 1
@@ -1080,41 +1022,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 5,
+    marginTop: 6,
     flexWrap: 'wrap'
   },
   artistName: {
     fontWeight: '800',
-    fontSize: 13.5
+    fontSize: 14.5
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 8
+    gap: 8,
+    marginTop: 10
   },
   licenseTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 9,
+    paddingVertical: 3.5,
     borderRadius: 6,
     borderWidth: 1
   },
   licenseText: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.6
   },
   description: {
-    fontSize: 13.5,
+    fontSize: 14,
     marginTop: 14,
-    lineHeight: 19
+    lineHeight: 20
   },
   pressingBox: {
     borderRadius: 14,
     padding: 16,
-    marginTop: 16,
+    marginTop: 18,
     borderWidth: 1
+  },
+  pressingBoxDesktop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 18
+  },
+  stockInfoCol: {
+    marginBottom: 12
   },
   pressingStats: {
     flexDirection: 'row',
@@ -1122,40 +1073,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10
   },
-  statCol: {},
-  statRightCol: {
-    alignItems: 'flex-end'
-  },
   statLabel: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
     letterSpacing: 0.8
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
     marginTop: 2
   },
   statTotal: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700'
   },
-  genLimitBadge: {
-    borderWidth: 1,
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 5,
-    marginTop: 3
-  },
-  genLimitText: {
-    fontSize: 10,
-    fontWeight: '800'
-  },
   stockBarTrack: {
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 4
+    height: 7,
+    borderRadius: 3.5,
+    overflow: 'hidden'
+  },
+  claimBtnWrap: {
+    marginTop: 6
+  },
+  claimBtnWrapDesktop: {
+    marginTop: 0,
+    alignItems: 'flex-end'
   },
   noPressingBox: {
     padding: 14,
@@ -1164,7 +1106,7 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   noPressingText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontStyle: 'italic',
     textAlign: 'center'
   },
@@ -1197,9 +1139,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 24,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',

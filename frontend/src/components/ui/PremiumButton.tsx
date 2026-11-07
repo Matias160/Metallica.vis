@@ -16,7 +16,7 @@ interface PremiumButtonProps {
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
   size?: 'sm' | 'md' | 'lg';
-  palette?: typeof darkPalette;
+  palette?: any;
 }
 
 export const PremiumButton: React.FC<PremiumButtonProps> = ({

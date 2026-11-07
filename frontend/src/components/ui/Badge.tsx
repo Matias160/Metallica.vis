@@ -2,7 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Animated, ViewStyle } from 'react-native';
 import { CheckCircle2, ShieldCheck, Sparkles, Award } from './Icons';
-import { darkPalette, themeTokens } from '../../theme/theme';
+import { themeTokens } from '../../theme/theme';
 
 export type BadgeVariant = 'verified' | 'curator' | 'admin' | 'artist' | 'mint' | 'cyan' | 'amber' | 'neutral';
 
@@ -11,7 +11,7 @@ interface BadgeProps {
   variant?: BadgeVariant;
   style?: ViewStyle;
   animatedPulse?: boolean;
-  palette?: typeof darkPalette;
+  palette?: any;
 }
 
 export const Badge: React.FC<BadgeProps> = ({
@@ -19,7 +19,7 @@ export const Badge: React.FC<BadgeProps> = ({
   variant = 'neutral',
   style,
   animatedPulse = false,
-  palette = darkPalette
+  palette
 }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -48,52 +48,52 @@ export const Badge: React.FC<BadgeProps> = ({
     switch (variant) {
       case 'verified':
         return {
-          bg: palette.emeraldMuted,
-          border: palette.emeraldBorder,
-          text: palette.emerald,
-          icon: <CheckCircle2 size={12} color={palette.emerald} />
+          bg: palette?.successMuted || 'rgba(16, 185, 129, 0.16)',
+          border: palette?.successBorder || 'rgba(16, 185, 129, 0.45)',
+          text: palette?.success || '#10B981',
+          icon: <CheckCircle2 size={12} color={palette?.success || '#10B981'} />
         };
       case 'curator':
         return {
-          bg: palette.purpleMuted,
-          border: palette.purpleBorder,
-          text: palette.purple,
-          icon: <Sparkles size={12} color={palette.purple} />
+          bg: palette?.purpleMuted || 'rgba(168, 85, 247, 0.16)',
+          border: palette?.purpleBorder || 'rgba(168, 85, 247, 0.45)',
+          text: palette?.purple || '#C084FC',
+          icon: <Sparkles size={12} color={palette?.purple || '#C084FC'} />
         };
       case 'admin':
         return {
-          bg: palette.roseMuted,
-          border: palette.roseBorder,
-          text: palette.rose,
-          icon: <ShieldCheck size={12} color={palette.rose} />
+          bg: palette?.dangerMuted || 'rgba(239, 68, 68, 0.16)',
+          border: palette?.dangerBorder || 'rgba(239, 68, 68, 0.45)',
+          text: palette?.danger || '#F87171',
+          icon: <ShieldCheck size={12} color={palette?.danger || '#F87171'} />
         };
       case 'artist':
       case 'amber':
         return {
-          bg: palette.amberMuted,
-          border: palette.amberBorder,
-          text: palette.amber,
-          icon: <Award size={12} color={palette.amber} />
+          bg: palette?.accentMuted || 'rgba(245, 158, 11, 0.16)',
+          border: palette?.accentBorder || 'rgba(245, 158, 11, 0.45)',
+          text: palette?.accent || '#FBBF24',
+          icon: <Award size={12} color={palette?.accent || '#FBBF24'} />
         };
       case 'cyan':
         return {
-          bg: palette.cyanMuted,
-          border: palette.cyanBorder,
-          text: palette.cyan,
+          bg: palette?.cyanMuted || 'rgba(0, 229, 255, 0.16)',
+          border: palette?.cyanBorder || 'rgba(0, 229, 255, 0.45)',
+          text: palette?.cyan || '#00E5FF',
           icon: null
         };
       case 'mint':
         return {
-          bg: 'rgba(16, 185, 129, 0.15)',
-          border: '#10B981',
+          bg: 'rgba(16, 185, 129, 0.16)',
+          border: 'rgba(16, 185, 129, 0.45)',
           text: '#34D399',
           icon: null
         };
       default:
         return {
-          bg: palette.cardElevated,
-          border: palette.border,
-          text: palette.textMuted,
+          bg: palette?.surfaceLight || '#182238',
+          border: palette?.border || '#232E47',
+          text: palette?.muted || '#CBD5E1',
           icon: null
         };
     }
@@ -119,16 +119,15 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 3,
-    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    paddingHorizontal: 9,
     borderRadius: themeTokens.radii.full,
     borderWidth: 1,
     alignSelf: 'flex-start'
   },
   badgeText: {
-    fontFamily: themeTokens.typography.fontFamilies.body,
-    fontSize: themeTokens.typography.sizes.micro,
-    fontWeight: themeTokens.typography.weights.bold,
-    letterSpacing: themeTokens.typography.letterSpacing.caps
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8
   }
 });

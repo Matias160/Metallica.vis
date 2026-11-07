@@ -8,7 +8,7 @@ interface SkeletonProps {
   height?: number;
   borderRadius?: number;
   style?: ViewStyle;
-  palette?: typeof darkPalette;
+  palette?: any;
 }
 
 export const Skeleton: React.FC<SkeletonProps> = ({

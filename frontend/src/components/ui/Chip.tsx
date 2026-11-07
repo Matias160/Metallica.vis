@@ -2,7 +2,7 @@
 import React, { ReactNode } from 'react';
 import { StyleSheet, Text, View, Pressable, Animated, ViewStyle, StyleProp } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { darkPalette, themeTokens } from '../../theme/theme';
+import { themeTokens } from '../../theme/theme';
 
 interface ChipProps {
   label: string;
@@ -10,7 +10,7 @@ interface ChipProps {
   onPress: () => void;
   icon?: ReactNode;
   style?: StyleProp<ViewStyle>;
-  palette?: typeof darkPalette;
+  palette?: any;
 }
 
 export const Chip: React.FC<ChipProps> = ({
@@ -19,7 +19,7 @@ export const Chip: React.FC<ChipProps> = ({
   onPress,
   icon,
   style,
-  palette = darkPalette
+  palette
 }) => {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -39,6 +39,17 @@ export const Chip: React.FC<ChipProps> = ({
     onPress();
   };
 
+  const accentColor = palette?.accent || palette?.amber || '#F59E0B';
+  const bgColor = selected
+    ? palette?.accentMuted || 'rgba(245, 158, 11, 0.18)'
+    : palette?.surfaceLight || '#182238';
+  const borderColor = selected
+    ? accentColor
+    : palette?.border || '#232E47';
+  const textColor = selected
+    ? accentColor
+    : palette?.textSecondary || '#E2E8F0';
+
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <Pressable
@@ -46,8 +57,8 @@ export const Chip: React.FC<ChipProps> = ({
         style={[
           styles.chip,
           {
-            backgroundColor: selected ? palette.amberMuted : palette.cardElevated,
-            borderColor: selected ? palette.amber : palette.border
+            backgroundColor: bgColor,
+            borderColor: borderColor
           },
           selected && themeTokens.shadows.amberGlow,
           style
@@ -58,10 +69,8 @@ export const Chip: React.FC<ChipProps> = ({
           style={[
             styles.label,
             {
-              color: selected ? palette.amber : palette.textMuted,
-              fontWeight: selected
-                ? themeTokens.typography.weights.bold
-                : themeTokens.typography.weights.medium
+              color: textColor,
+              fontWeight: selected ? '800' : '600'
             }
           ]}
         >
@@ -79,15 +88,14 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: themeTokens.radii.full,
-    borderWidth: 1,
-    marginRight: themeTokens.spacing.sm
+    borderWidth: 1.2,
+    marginRight: 8
   },
   iconContainer: {
     marginRight: 6
   },
   label: {
-    fontFamily: themeTokens.typography.fontFamilies.body,
-    fontSize: themeTokens.typography.sizes.bodySm,
-    letterSpacing: 0.2
+    fontSize: 12.5,
+    letterSpacing: 0.3
   }
 });

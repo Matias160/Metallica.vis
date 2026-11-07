@@ -9,7 +9,7 @@ interface GlowCardProps {
   style?: StyleProp<ViewStyle>;
   variant?: 'surface' | 'elevated' | 'amberGlow' | 'cyanGlow' | 'purpleGlow';
   onPress?: () => void;
-  palette?: typeof darkPalette;
+  palette?: any;
 }
 
 export const GlowCard: React.FC<GlowCardProps> = ({

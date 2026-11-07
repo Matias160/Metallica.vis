@@ -1,8 +1,8 @@
 // Define la navegación pública y privada con soporte para Modo Museo, Estudio y Admin en TypeScript.
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StyleSheet, View, Animated, Platform } from 'react-native';
+import { StyleSheet, View, Platform, useWindowDimensions } from 'react-native';
 import { BlurView } from 'expo-blur';
 import {
   Disc3,
@@ -15,7 +15,6 @@ import {
 
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { themeTokens } from '../theme/theme';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/home/HomeScreen';
@@ -41,62 +40,41 @@ interface TabIconProps {
   name: 'disc' | 'archive' | 'award' | 'sliders' | 'shield' | 'user';
   focused: boolean;
   color: string;
-  palette: any;
 }
 
-function TabIcon({ name, focused, color, palette }: TabIconProps): React.JSX.Element {
-  const scaleAnim = useRef(new Animated.Value(focused ? 1.05 : 1)).current;
-
-  useEffect(() => {
-    Animated.spring(scaleAnim, {
-      toValue: focused ? 1.08 : 1,
-      useNativeDriver: true,
-      friction: 6,
-      tension: 200
-    }).start();
-  }, [focused]);
-
+function TabIcon({ name, focused, color }: TabIconProps): React.JSX.Element {
+  const iconSize = 20;
   const renderIcon = () => {
-    const iconSize = 19;
-    const iconColor = focused ? palette.accent : palette.muted;
     switch (name) {
       case 'disc':
-        return <Disc3 size={iconSize} color={iconColor} />;
+        return <Disc3 size={iconSize} color={color} />;
       case 'archive':
-        return <Archive size={iconSize} color={iconColor} />;
+        return <Archive size={iconSize} color={color} />;
       case 'award':
-        return <Award size={iconSize} color={iconColor} />;
+        return <Award size={iconSize} color={color} />;
       case 'sliders':
-        return <Sliders size={iconSize} color={iconColor} />;
+        return <Sliders size={iconSize} color={color} />;
       case 'shield':
-        return <Shield size={iconSize} color={iconColor} />;
+        return <Shield size={iconSize} color={color} />;
       case 'user':
-        return <User size={iconSize} color={iconColor} />;
+        return <User size={iconSize} color={color} />;
     }
   };
 
   return (
-    <Animated.View style={[navStyles.iconWrap, { transform: [{ scale: scaleAnim }] }]}>
-      <View
-        style={[
-          navStyles.pillContainer,
-          focused && {
-            backgroundColor: palette.amberMuted || 'rgba(245, 158, 11, 0.16)',
-            borderColor: palette.amberBorder || 'rgba(245, 158, 11, 0.45)',
-            borderWidth: 1
-          },
-          focused && themeTokens.shadows.amberGlow
-        ]}
-      >
-        {renderIcon()}
-      </View>
-    </Animated.View>
+    <View style={navStyles.iconWrap}>
+      {renderIcon()}
+      {focused && <View style={[navStyles.activeDot, { backgroundColor: color }]} />}
+    </View>
   );
 }
 
 export function MainStack(): React.JSX.Element {
   const { user } = useAuth();
   const { palette, isDark } = useTheme();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
+
   const roles = user?.roles || [];
   const isArtist = roles.includes('artist') || roles.includes('admin');
   const isAdmin = roles.includes('admin');
@@ -107,50 +85,34 @@ export function MainStack(): React.JSX.Element {
       screenOptions={{
         headerShown: false,
         tabBarLabelStyle: {
-          fontSize: 9.5,
-          fontWeight: '800',
+          fontSize: 10,
+          fontWeight: '700',
           letterSpacing: 0.3,
-          marginTop: 2
+          marginBottom: 4
         },
         tabBarItemStyle: {
-          paddingHorizontal: 2
+          paddingVertical: 4
         },
-        tabBarStyle: {
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: Platform.select({
-            ios: 'transparent',
-            android: palette.surface,
-            default: palette.surface
-          }),
-          borderTopWidth: 1,
-          borderTopColor: palette.borderSubtle,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 6,
-          elevation: 14,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.4,
-          shadowRadius: 12
-        },
-        tabBarBackground: () =>
-          Platform.OS === 'ios' ? (
-            <BlurView
-              intensity={45}
-              tint={isDark ? 'dark' : 'light'}
-              style={StyleSheet.absoluteFill}
-            />
-          ) : (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: isDark ? 'rgba(17, 23, 38, 0.95)' : 'rgba(255, 255, 255, 0.96)' }
-              ]}
-            />
-          ),
+        tabBarStyle: [
+          styles.tabBarBase,
+          {
+            backgroundColor: palette.surface,
+            borderTopColor: palette.borderSubtle
+          },
+          isDesktop && {
+            width: Math.min(width - 40, 720),
+            left: (width - Math.min(width - 40, 720)) / 2,
+            bottom: 16,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: palette.border,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.5,
+            shadowRadius: 16,
+            elevation: 16
+          }
+        ],
         tabBarActiveTintColor: palette.accent,
         tabBarInactiveTintColor: palette.muted
       }}
@@ -161,7 +123,7 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Catálogo',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon name="disc" focused={focused} color={color} palette={palette} />
+            <TabIcon name="disc" focused={focused} color={color} />
           )
         }}
       />
@@ -171,7 +133,7 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Cintas',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon name="archive" focused={focused} color={color} palette={palette} />
+            <TabIcon name="archive" focused={focused} color={color} />
           )
         }}
       />
@@ -181,7 +143,7 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Museo',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon name="award" focused={focused} color={color} palette={palette} />
+            <TabIcon name="award" focused={focused} color={color} />
           )
         }}
       />
@@ -193,7 +155,7 @@ export function MainStack(): React.JSX.Element {
           options={{
             tabBarLabel: 'Estudio',
             tabBarIcon: ({ focused, color }) => (
-              <TabIcon name="sliders" focused={focused} color={color} palette={palette} />
+              <TabIcon name="sliders" focused={focused} color={color} />
             )
           }}
         />
@@ -206,7 +168,7 @@ export function MainStack(): React.JSX.Element {
           options={{
             tabBarLabel: 'Admin',
             tabBarIcon: ({ focused, color }) => (
-              <TabIcon name="shield" focused={focused} color={color} palette={palette} />
+              <TabIcon name="shield" focused={focused} color={color} />
             )
           }}
         />
@@ -218,7 +180,7 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Perfil',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon name="user" focused={focused} color={color} palette={palette} />
+            <TabIcon name="user" focused={focused} color={color} />
           )
         }}
       />
@@ -226,18 +188,29 @@ export function MainStack(): React.JSX.Element {
   );
 }
 
+const styles = StyleSheet.create({
+  tabBarBase: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    borderTopWidth: 1
+  }
+});
+
 const navStyles = StyleSheet.create({
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 44,
-    height: 32
+    height: 28,
+    position: 'relative'
   },
-  pillContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 3.5,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center'
+  activeDot: {
+    position: 'absolute',
+    bottom: -4,
+    width: 4,
+    height: 4,
+    borderRadius: 2
   }
 });

@@ -102,7 +102,7 @@ export const themeTokens = {
 };
 
 export const darkPalette = {
-  mode: 'dark' as const,
+  mode: 'dark' as 'dark' | 'light',
   // 3 Niveles de Superficie
   background: '#06080D',          // Nivel 0: Casi negro profundo con tinte carbón
   backgroundSecondary: '#0B101D', // Degradado inferior azul noche
@@ -153,7 +153,7 @@ export const darkPalette = {
 };
 
 export const lightPalette = {
-  mode: 'light' as const,
+  mode: 'light' as 'dark' | 'light',
   // 3 Niveles de Superficie modo claro
   background: '#F8FAFC',
   backgroundSecondary: '#EEF2F6',
@@ -200,4 +200,4 @@ export const lightPalette = {
   roseBorder: '#FECACA'
 };
 
-export type ThemePalette = typeof darkPalette;
+export type ThemePalette = Omit<typeof darkPalette, 'mode'> & { mode: 'dark' | 'light' };
