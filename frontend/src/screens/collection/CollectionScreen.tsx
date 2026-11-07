@@ -28,6 +28,8 @@ import QrScannerModal from '../../components/QrScannerModal';
 import { shadows } from '../../theme/colors';
 import { downloadTrackOffline, getOfflineTracksMap, removeTrackOffline } from '../../utils/offlineStorage';
 import { Copy } from '../../types';
+import { ShredderReceipt } from '../../components/react-bits';
+import type { ActionLog } from '../../components/react-bits/ShredderReceipt';
 
 export default function CollectionScreen(): React.JSX.Element {
   const { token, user } = useAuth();
@@ -56,6 +58,41 @@ export default function CollectionScreen(): React.JSX.Element {
 
   // Dubbing state
   const [dubModalVisible, setDubModalVisible] = useState<boolean>(false);
+  const [historyModalVisible, setHistoryModalVisible] = useState<boolean>(false);
+  const [actionLogs, setActionLogs] = useState<ActionLog[]>([
+    {
+      id: 1,
+      type: 'CLAIM',
+      title: 'Adquisición de Cinta Física',
+      details: 'Copia física #003 de "Holy Wars... The Punishment Due" incorporada en custodia Mint (100%).',
+      timestamp: 'Hace 12 min · Bodega Central',
+      hash: '0x8f2a...c4b1'
+    },
+    {
+      id: 2,
+      type: 'DUB',
+      title: 'Dubbeo Analógico P2P Grabado',
+      details: 'Duplicación Gen 1 grabada para el archivista @Cliff_Basslines con cabezal calibrado.',
+      timestamp: 'Hoy 16:42 · Consola Deck A',
+      hash: '0xd71e...90aa'
+    },
+    {
+      id: 3,
+      type: 'TRANSFER',
+      title: 'Transferencia de Linaje Criptográfico',
+      details: 'Cinta "Enter Sandman (One on One Mix)" transferida con certificado de custodia.',
+      timestamp: 'Ayer 21:15 · Red P2P',
+      hash: '0x33bc...77fe'
+    },
+    {
+      id: 4,
+      type: 'VERIFY',
+      title: 'Sello Verificado por Sello Megaforce',
+      details: 'Certificación de máster original con espectro de audio analógico 20Hz-20kHz.',
+      timestamp: '05 Nov 2026 · Vault Authority',
+      hash: '0xaa19...e201'
+    }
+  ]);
   const [selectedCopyForDub, setSelectedCopyForDub] = useState<Copy | null>(null);
   const [recipientUserId, setRecipientUserId] = useState<string>('');
   const [dubbing, setDubbing] = useState<boolean>(false);
@@ -314,6 +351,14 @@ export default function CollectionScreen(): React.JSX.Element {
 
             {/* Acciones de Cabecera: Escáner QR y Tema */}
             <View style={styles.headerActions}>
+              {/* Botón Historial de Acciones con Shredder */}
+              <Pressable
+                style={[styles.qrScanBtn, { backgroundColor: palette.accentMuted, borderColor: palette.accentBorder }]}
+                onPress={() => setHistoryModalVisible(true)}
+              >
+                <Feather name="file-text" size={13} color={palette.accent} />
+                <Text style={[styles.qrScanBtnText, { color: palette.accent }]}>HISTORIAL</Text>
+              </Pressable>
               <Pressable
                 style={[styles.qrScanBtn, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}
                 onPress={() => setScannerVisible(true)}
@@ -1168,6 +1213,48 @@ export default function CollectionScreen(): React.JSX.Element {
           if (found) setInspectedCopy(found);
         }}
       />
+    
+      {/* Modal de Historial de Acciones con Efecto Shredder (React Bits) */}
+      <Modal
+        visible={historyModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setHistoryModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalBox, { backgroundColor: palette.background, borderColor: palette.border, maxHeight: '85%' }]}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={[styles.modalTitle, { color: palette.text }]}>📜 Historial de Acciones</Text>
+                <Text style={[styles.modalDesc, { color: palette.muted }]}>
+                  Registro de dubbeos, adquisiciones y sellos. Podés triturar cualquier ticket archivado.
+                </Text>
+              </View>
+              <Pressable onPress={() => setHistoryModalVisible(false)} style={styles.modalCloseBtn}>
+                <Feather name="x" size={18} color={palette.text} />
+              </Pressable>
+            </View>
+
+            <ScrollView style={{ marginTop: 12 }} showsVerticalScrollIndicator={false}>
+              {actionLogs.length === 0 ? (
+                <View style={{ padding: 24, alignItems: 'center' }}>
+                  <Text style={{ color: palette.muted, fontSize: 14 }}>No hay más comprobantes en la bandeja.</Text>
+                </View>
+              ) : (
+                actionLogs.map((log) => (
+                  <ShredderReceipt
+                    key={log.id}
+                    log={log}
+                    palette={palette}
+                    onShred={(id) => setActionLogs((prev) => prev.filter((l) => l.id !== id))}
+                  />
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }

@@ -496,3 +496,10 @@ body {
   0%, 100% { opacity: 0.4; transform: scale(1); }
   50% { opacity: 0.85; transform: scale(1.02); }
 }
+
+
+@keyframes shredderFall {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  50% { transform: translateY(15px) scale(0.95); opacity: 0.6; filter: blur(1px); }
+  100% { transform: translateY(40px) scale(0.8); opacity: 0; filter: blur(3px); }
+}

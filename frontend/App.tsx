@@ -9,6 +9,7 @@ import { FeedbackProvider } from './src/context/FeedbackContext';
 import { SyncProvider } from './src/context/SyncContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { AuthStack, MainStack } from './src/navigation/AppNavigator';
+import { GlowCursor } from './src/components/react-bits';
 
 // Inyección de estilos 3D y texturas analógicas en Web
 if (Platform.OS === 'web') {
@@ -25,6 +26,7 @@ function ThemedApp(): React.JSX.Element {
   return (
     <View style={[styles.outerContainer, { backgroundColor: palette.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      <GlowCursor color={isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(217, 119, 6, 0.08)'} />
       <View style={[styles.innerContainer, { backgroundColor: palette.background }]}>
         <NavigationContainer>
           <RootNavigator />

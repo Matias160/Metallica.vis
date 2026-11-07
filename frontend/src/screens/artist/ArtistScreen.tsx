@@ -22,6 +22,7 @@ import { useFeedback } from '../../context/FeedbackContext';
 import { useTheme } from '../../context/ThemeContext';
 import { shadows } from '../../theme/colors';
 import { Track, Artist } from '../../types';
+import { DepthCarousel } from '../../components/react-bits';
 
 // Presets de demostración de audio máster analógico
 const AUDIO_PRESETS = [

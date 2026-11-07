@@ -11,7 +11,8 @@ import {
   TextInput,
   View,
   Animated,
-  useWindowDimensions
+  useWindowDimensions,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -48,7 +49,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Chip } from '../../components/ui/Chip';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Track } from '../../types';
-import { ShinyText, SpotlightCard, DecryptedText, ShimmerButton } from '../../components/react-bits';
+import { ShinyText, SpotlightCard, DecryptedText, ShimmerButton, TechText } from '../../components/react-bits';
 
 // Componente de Barra de Stock Animada con LinearGradient
 function AnimatedStockBar({
@@ -152,10 +153,12 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
   const [scannerVisible, setScannerVisible] = useState<boolean>(false);
   const listRef = useRef<FlatList>(null);
   const [showScrollTop, setShowScrollTop] = useState<boolean>(false);
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
 
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent?.contentOffset?.y || 0;
     setShowScrollTop(offsetY > 260);
+    setIsScrolled(offsetY > 50);
   };
 
   const scrollToTop = () => {
@@ -267,21 +270,42 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: palette.background }]}>
-      {/* Top Banner de Consola de Estudio */}
+      {/* Top Banner de Consola de Estudio Retráctil */}
       <View
         style={[
           styles.topBar,
           {
-            backgroundColor: palette.backgroundElevated,
+            backgroundColor: palette.glassHeader || palette.backgroundElevated,
             borderBottomColor: palette.borderSubtle
-          }
+          },
+          Platform.OS === 'web' && ({
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+          } as any)
         ]}
       >
         <View style={styles.topBarInner}>
+          {/* Fila Principal con Logo TechText y Acciones */}
           <View style={styles.topMetaRow}>
-            <View style={styles.badgeRow}>
-              <View style={[styles.liveIndicator, { backgroundColor: palette.accent }]} />
-              <ShinyText text="TAPE TRADING ARCHIVE · CATÁLOGO MÁSTER" baseColor={palette.muted} shimmerColor={palette.accent} style={styles.badgeRowText} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <TechText
+                text="metallica.vis"
+                color={palette.accent}
+                glowColor={palette.borderGlowAmber}
+                style={{ fontSize: isScrolled ? 16 : 21, fontWeight: '800' }}
+              />
+              {!isScrolled && (
+                <View style={styles.badgeRow}>
+                  <View style={[styles.liveIndicator, { backgroundColor: palette.accent }]} />
+                  <ShinyText
+                    text="CATÁLOGO MÁSTER"
+                    baseColor={palette.muted}
+                    shimmerColor={palette.accent}
+                    style={styles.badgeRowText}
+                  />
+                </View>
+              )}
             </View>
 
             <View style={styles.headerRightActions}>
@@ -340,11 +364,17 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
             </View>
           </View>
 
-          {/* Título de Cabecera */}
-          <View style={styles.titleCol}>
-            <Text style={[styles.title, { color: palette.text }]}>Catálogo de Tiradas</Text>
-            <DecryptedText text="Cintas máster físicas en tiradas estrictamente limitadas, numeradas y custodiadas en bodega." style={[styles.subtitle, { color: palette.muted }]} speed={25} />
-          </View>
+          {/* Título de Cabecera expandido (se oculta al bajar el scroll) */}
+          {!isScrolled && (
+            <View style={styles.titleCol}>
+              <Text style={[styles.title, { color: palette.text }]}>Catálogo de Tiradas</Text>
+              <DecryptedText
+                text="Cintas máster físicas en tiradas estrictamente limitadas, numeradas y custodiadas en bodega."
+                style={[styles.subtitle, { color: palette.muted }]}
+                speed={25}
+              />
+            </View>
+          )}
         </View>
 
         {/* Buscador con Resplandor de Foco */}

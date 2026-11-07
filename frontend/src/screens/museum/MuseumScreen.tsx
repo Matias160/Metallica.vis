@@ -15,6 +15,7 @@ import { useFeedback } from '../../context/FeedbackContext';
 import { useTheme } from '../../context/ThemeContext';
 import QrScannerModal from '../../components/QrScannerModal';
 import { shadows } from '../../theme/colors';
+import { CircularCarousel, TechText } from '../../components/react-bits';
 
 export interface MuseumPiece {
   id: string;
