@@ -11,7 +11,7 @@ import {
   Sliders,
   Shield,
   User
-} from 'lucide-react-native';
+} from '../components/ui/Icons';
 
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';

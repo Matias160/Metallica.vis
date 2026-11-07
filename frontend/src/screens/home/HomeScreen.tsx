@@ -32,7 +32,7 @@ import {
   ArrowUp,
   Radio,
   SlidersHorizontal
-} from 'lucide-react-native';
+} from '../../components/ui/Icons';
 
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';

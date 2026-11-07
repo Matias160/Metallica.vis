@@ -1,7 +1,7 @@
 // Badge: Etiquetas semánticas con pulso suave para sellos verificados y estados
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Animated, ViewStyle } from 'react-native';
-import { CheckCircle2, ShieldCheck, Sparkles, Award } from 'lucide-react-native';
+import { CheckCircle2, ShieldCheck, Sparkles, Award } from './Icons';
 import { darkPalette, themeTokens } from '../../theme/theme';
 
 export type BadgeVariant = 'verified' | 'curator' | 'admin' | 'artist' | 'mint' | 'cyan' | 'amber' | 'neutral';

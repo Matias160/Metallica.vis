@@ -32,7 +32,7 @@ import {
   Layers,
   X,
   AlertTriangle
-} from 'lucide-react-native';
+} from '../../components/ui/Icons';
 
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
