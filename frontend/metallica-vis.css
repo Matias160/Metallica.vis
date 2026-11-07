@@ -471,3 +471,28 @@ body {
   background-color: var(--accent-gold-muted);
   border-color: var(--accent-gold-bright);
 }
+
+
+/* --------------------------------------------------------------------------
+   12. REACT BITS — ANIMACIONES Y EFECTOS VISUALES
+   -------------------------------------------------------------------------- */
+@keyframes shinyTextSweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes holographicShine {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes shimmerBorderRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulseGlowSlow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}

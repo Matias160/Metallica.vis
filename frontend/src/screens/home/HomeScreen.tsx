@@ -48,6 +48,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Chip } from '../../components/ui/Chip';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Track } from '../../types';
+import { ShinyText, SpotlightCard, DecryptedText, ShimmerButton } from '../../components/react-bits';
 
 // Componente de Barra de Stock Animada con LinearGradient
 function AnimatedStockBar({
@@ -280,9 +281,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
           <View style={styles.topMetaRow}>
             <View style={styles.badgeRow}>
               <View style={[styles.liveIndicator, { backgroundColor: palette.accent }]} />
-              <Text style={[styles.badgeRowText, { color: palette.muted }]}>
-                TAPE TRADING ARCHIVE · CATÁLOGO MÁSTER
-              </Text>
+              <ShinyText text="TAPE TRADING ARCHIVE · CATÁLOGO MÁSTER" baseColor={palette.muted} shimmerColor={palette.accent} style={styles.badgeRowText} />
             </View>
 
             <View style={styles.headerRightActions}>
@@ -344,9 +343,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
           {/* Título de Cabecera */}
           <View style={styles.titleCol}>
             <Text style={[styles.title, { color: palette.text }]}>Catálogo de Tiradas</Text>
-            <Text style={[styles.subtitle, { color: palette.muted }]}>
-              Cintas máster físicas en tiradas estrictamente limitadas, numeradas y custodiadas en bodega.
-            </Text>
+            <DecryptedText text="Cintas máster físicas en tiradas estrictamente limitadas, numeradas y custodiadas en bodega." style={[styles.subtitle, { color: palette.muted }]} speed={25} />
           </View>
         </View>
 
@@ -522,9 +519,9 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
             const percentageLeft = total > 0 ? (available / total) * 100 : 0;
 
             return (
-              <GlowCard
-                variant={item.is_featured ? 'amberGlow' : 'surface'}
-                palette={palette}
+              <SpotlightCard
+                spotlightColor={item.is_featured ? 'rgba(245, 158, 11, 0.24)' : 'rgba(0, 229, 255, 0.15)'}
+                borderColor={item.is_featured ? 'rgba(245, 158, 11, 0.55)' : 'rgba(30, 41, 59, 0.6)'}
                 style={styles.card}
               >
                 {/* Cabecera de la Pista: Portada de Vinilo y Metadatos */}
@@ -669,28 +666,27 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
 
                     {/* Botón de Adquirir Proporcionado */}
                     <View style={[styles.claimBtnWrap, isDesktop && styles.claimBtnWrapDesktop]}>
-                      <PremiumButton
+                      <ShimmerButton
+                        title={
+                          isClaiming
+                            ? 'PROCESANDO...'
+                            : isSoldOut
+                            ? 'TIRADA FÍSICA AGOTADA'
+                            : 'ADQUIRIR CINTA FÍSICA - NUMERADA'
+                        }
                         onPress={() => handleClaim(trackPressing, item.title)}
                         disabled={isSoldOut || Boolean(isClaiming)}
-                        variant={isSoldOut ? 'secondary' : 'primary'}
-                        size="md"
                         style={isDesktop ? { width: 300 } : { width: '100%' }}
-                        palette={palette}
+                        gradientColors={isSoldOut ? ['#334155', '#1E293B'] : ['#F59E0B', '#D97706']}
                         icon={
                           isClaiming ? null : (
                             <Archive
-                              size={15}
+                              size={14}
                               color={isSoldOut ? palette.muted : '#06080D'}
                             />
                           )
                         }
-                      >
-                        {isClaiming
-                          ? 'PROCESANDO...'
-                          : isSoldOut
-                          ? 'TIRADA AGOTADA'
-                          : 'ADQUIRIR CINTA FÍSICA'}
-                      </PremiumButton>
+                      />
                     </View>
                   </View>
                 ) : (
@@ -708,7 +704,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                     </Text>
                   </View>
                 )}
-              </GlowCard>
+              </SpotlightCard>
             );
           }}
           ListEmptyComponent={

@@ -39,6 +39,7 @@ import { useFeedback } from '../../context/FeedbackContext';
 import { useTheme } from '../../context/ThemeContext';
 import { themeTokens } from '../../theme/theme';
 import { GlowCard } from '../../components/ui/GlowCard';
+import { ShinyText, HolographicCard, DecryptedText } from '../../components/react-bits';
 import { PremiumButton } from '../../components/ui/PremiumButton';
 import { Badge } from '../../components/ui/Badge';
 
@@ -151,9 +152,7 @@ export default function ProfileScreen(): React.JSX.Element {
         <View style={styles.topBarInner}>
           <View style={styles.badgeRow}>
             <View style={[styles.badgeDot, { backgroundColor: palette.accent }]} />
-            <Text style={[styles.badgeRowText, { color: palette.muted }]}>
-              CREDENCIAL DE ESTUDIO · PASAPORTE DE COLECCIONISTA
-            </Text>
+            <ShinyText text="CREDENCIAL DE ESTUDIO · PASAPORTE DE COLECCIONISTA" baseColor={palette.muted} shimmerColor={palette.accent} style={styles.badgeRowText} />
           </View>
           <Text style={[styles.title, { color: palette.text }]}>Mi Pasaporte</Text>
           <Text style={[styles.subtitle, { color: palette.muted }]}>
@@ -164,12 +163,7 @@ export default function ProfileScreen(): React.JSX.Element {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Tarjeta Pasaporte Holográfica con Patrón Guilloche */}
-        <LinearGradient
-          colors={['#FBBF24', '#00E5FF', '#A855F7', '#FBBF24']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.holoPassportBorder}
-        >
+        <HolographicCard style={styles.holoPassportBorder}>
           <LinearGradient
             colors={[palette.cardElevated || '#172036', palette.card || '#111726']}
             start={{ x: 0, y: 0 }}
@@ -288,9 +282,11 @@ export default function ProfileScreen(): React.JSX.Element {
                 </Pressable>
               </View>
 
-              <Text style={[styles.p2pValue, { color: palette.text }]}>
-                {user?.id ? `ID #${String(user.id).padStart(6, '0')}` : 'ID #000000'}
-              </Text>
+              <DecryptedText
+                text={user?.id ? `NODE-P2P-${String(user.id).padStart(6, '0')}-AUTH` : 'NODE-P2P-000000-AUTH'}
+                style={[styles.p2pValue, { color: palette.text }]}
+                speed={30}
+              />
 
               <Text style={[styles.p2pHint, { color: palette.muted }]}>
                 Proporcioná este número a otros archivistas para recibir transferencias de cintas analógicas y registrar tu nombre en el linaje criptográfico.
@@ -314,7 +310,7 @@ export default function ProfileScreen(): React.JSX.Element {
               </View>
             </View>
           </LinearGradient>
-        </LinearGradient>
+        </HolographicCard>
 
         {/* Acciones de Cuenta */}
         <View style={styles.actionGroup}>
