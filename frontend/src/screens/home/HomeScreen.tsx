@@ -373,16 +373,28 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
           </View>
 
           {/* Título de Cabecera expandido (se oculta al bajar el scroll) */}
-          {!isScrolled && (
-            <View style={styles.titleCol}>
-              <Text style={[styles.title, { color: palette.text }]}>Catálogo de Tiradas</Text>
-              <DecryptedText
-                text="Cintas máster físicas en tiradas estrictamente limitadas, numeradas y custodiadas en bodega."
-                style={[styles.subtitle, { color: palette.muted }]}
-                speed={25}
-              />
-            </View>
-          )}
+          {/* Título de Cabecera con Transición Fluida Suave (React Bits) */}
+          <View
+            style={[
+              styles.titleCol,
+              Platform.OS === 'web' && ({
+                maxHeight: isScrolled ? 0 : 120,
+                opacity: isScrolled ? 0 : 1,
+                transform: isScrolled ? 'translateY(-12px) scale(0.96)' : 'translateY(0) scale(1)',
+                marginTop: isScrolled ? 0 : 10,
+                marginBottom: isScrolled ? 0 : 8,
+                overflow: 'hidden',
+                transition: 'max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), margin 0.35s ease'
+              } as any)
+            ]}
+          >
+            <Text style={[styles.title, { color: palette.text }]}>Catálogo de Tiradas</Text>
+            <DecryptedText
+              text="Cintas máster físicas en tiradas estrictamente limitadas, numeradas y custodiadas en bodega."
+              style={[styles.subtitle, { color: palette.muted }]}
+              speed={25}
+            />
+          </View>
         </View>
 
         {/* Buscador con Resplandor de Foco */}
@@ -666,7 +678,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                     style={[
                       styles.pressingBox,
                       {
-                        backgroundColor: palette.surfaceDark,
+                        backgroundColor: isDark ? (palette.surfaceDark || '#0A0E17') : '#F1F5F9',
                         borderColor: palette.borderSubtle
                       },
                       isDesktop && styles.pressingBoxDesktop

@@ -423,7 +423,7 @@ export default function ArtistScreen(): React.JSX.Element {
             style={[styles.createBtnFull, { backgroundColor: palette.accent, maxWidth: 440, alignSelf: 'center' }, shadows.glowAccent]}
             onPress={openCreateTrack}
           >
-            <Text style={[styles.createBtnText, { color: palette.background }]}>
+              <Text style={[styles.createBtnText, { color: '#06080D' }]}>
               + SUBIR NUEVA CANCIÓN AL MÁSTER
             </Text>
           </Pressable>
@@ -439,6 +439,41 @@ export default function ArtistScreen(): React.JSX.Element {
         </View>
       ) : (
         <FlatList
+          ListHeaderComponent={
+            <View style={{ marginBottom: 28, alignItems: 'center', width: '100%' }}>
+              <View style={[styles.titleAndSelloRow, { width: '100%', marginBottom: 12 }]}>
+                <Text style={[styles.title, { color: palette.text, fontSize: 16, fontWeight: '800' }]}>
+                  MESA DE CONTROL 3D · MÁSTERS EN PROFUNDIDAD
+                </Text>
+                <Text style={[styles.selloLabel, { color: palette.muted, marginTop: 2 }]}>
+                  Seleccioná una cinta apilada en el eje Z para acuñar tiradas o editar mezclas.
+                </Text>
+              </View>
+              <DepthCarousel
+                items={(tracks.length > 0
+                  ? tracks
+                  : [
+                      { id: 1, title: 'Soundboard Master Reel 1983', artist_name: 'Metallica', license_type: 'Master Directo' },
+                      { id: 2, title: 'Studio 24-Track Multitrack Raw', artist_name: 'Metallica', license_type: 'Chrome Type II' },
+                      { id: 3, title: 'Live Roskilde Festival Soundboard', artist_name: 'Metallica', license_type: 'Metal Type IV' }
+                    ]
+                ).map((t) => ({
+                  id: t.id,
+                  title: t.title,
+                  artist: (t as any).artist_name || 'Estudio Vault',
+                  genre: (t as any).license_type || 'Master Directo'
+                }))}
+                palette={palette}
+                onSelect={(item) => {
+                  const found = tracks.find((t) => t.id === item.id);
+                  if (found) {
+                    setSelectedTrackForPressing(found as any);
+                    setPressingModalVisible(true);
+                  }
+                }}
+              />
+            </View>
+          }
           data={tracks}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.listContent}

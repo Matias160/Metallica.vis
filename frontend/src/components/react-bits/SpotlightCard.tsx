@@ -1,11 +1,12 @@
-// SpotlightCard: Tarjeta con foco de luz radial interactivo que sigue el cursor / toque (React Bits)
+// SpotlightCard: Tarjeta con foco de luz radial interactivo adaptada para tema Claro y Oscuro (React Bits)
 import React, { useRef, useState } from 'react';
 import { View, StyleSheet, Platform, ViewStyle, StyleProp, Pressable } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 interface SpotlightCardProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
-  spotlightColor?: string; // Color del haz (ej: 'rgba(245, 158, 11, 0.18)')
+  spotlightColor?: string;
   borderColor?: string;
   borderRadius?: number;
   onPress?: () => void;
@@ -14,17 +15,29 @@ interface SpotlightCardProps {
 export const SpotlightCard: React.FC<SpotlightCardProps> = ({
   children,
   style,
-  spotlightColor = 'rgba(245, 158, 11, 0.18)',
-  borderColor = 'rgba(245, 158, 11, 0.25)',
-  borderRadius = 16,
+  spotlightColor,
+  borderColor,
+  borderRadius = 18,
   onPress
 }) => {
+  const { palette, isDark } = useTheme();
   const cardRef = useRef<View>(null);
   const [position, setPosition] = useState<{ x: number; y: number; opacity: number }>({
     x: 0,
     y: 0,
     opacity: 0
   });
+
+  const defaultSpotlight = isDark
+    ? 'rgba(245, 158, 11, 0.18)'
+    : 'rgba(217, 119, 6, 0.12)';
+
+  const defaultBorder = isDark
+    ? 'rgba(245, 158, 11, 0.35)'
+    : 'rgba(217, 119, 6, 0.35)';
+
+  const activeSpotlight = spotlightColor || defaultSpotlight;
+  const activeBorder = borderColor || defaultBorder;
 
   const handlePointerMove = (e: any) => {
     if (Platform.OS !== 'web') return;
@@ -54,7 +67,11 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
       ref={cardRef}
       style={[
         styles.cardContainer,
-        { borderRadius },
+        {
+          borderRadius,
+          backgroundColor: palette.card || (isDark ? '#111726' : '#FFFFFF'),
+          borderColor: palette.border || (isDark ? '#232E47' : '#CBD5E1')
+        },
         style
       ]}
       {...(webEvents as any)}
@@ -72,7 +89,7 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
             pointerEvents: 'none',
             opacity: position.opacity,
             transition: 'opacity 0.3s ease',
-            background: `radial-gradient(420px circle at ${position.x}px ${position.y}px, ${spotlightColor}, transparent 80%)`,
+            background: `radial-gradient(420px circle at ${position.x}px ${position.y}px, ${activeSpotlight}, transparent 80%)`,
             zIndex: 1
           }}
         />
@@ -88,7 +105,7 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
             pointerEvents: 'none',
             opacity: position.opacity,
             transition: 'opacity 0.25s ease',
-            background: `radial-gradient(300px circle at ${position.x}px ${position.y}px, ${borderColor}, transparent 70%)`,
+            background: `radial-gradient(300px circle at ${position.x}px ${position.y}px, ${activeBorder}, transparent 70%)`,
             zIndex: 0
           }}
         />
@@ -115,10 +132,7 @@ const styles = StyleSheet.create({
   cardContainer: {
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: '#0F1523',
     borderWidth: 1,
-    borderColor: '#1E293B',
-    // Sombra sutil
     ...Platform.select({
       web: {
         transition: 'transform 0.2s ease, box-shadow 0.2s ease'

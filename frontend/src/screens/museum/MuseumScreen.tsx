@@ -251,6 +251,30 @@ export default function MuseumScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {activeTab === 'pieces' && (
           <View>
+            {/* Carrusel 3D Circular Radial de Piezas Históricas (React Bits) */}
+            <View style={{ marginBottom: 28, alignItems: 'center', width: '100%' }}>
+              <View style={[styles.sectionHeaderRow, { marginBottom: 12, width: '100%' }]}>
+                <Text style={[styles.sectionTitle, { color: palette.text }]}>
+                  EXHIBICIÓN RADIAL 3D · RELIQUIAS HISTÓRICAS
+                </Text>
+                <Text style={[styles.sectionSubtitle, { color: palette.muted }]}>
+                  Girá el cilindro analógico para inspeccionar las cintas máster conservadas en bóveda.
+                </Text>
+              </View>
+              <CircularCarousel
+                items={MUSEUM_PIECES.map((p) => ({
+                  id: p.id,
+                  title: p.title,
+                  subtitle: p.category,
+                  image: p.coverUrl,
+                  badge: p.curatorBadge,
+                  year: p.year,
+                  data: p
+                }))}
+                palette={palette}
+                onSelectItem={(item) => setSelectedPiece(item.data)}
+              />
+            </View>
             <View style={styles.sectionHeaderRow}>
               <Text style={[styles.sectionTitle, { color: palette.text }]}>
                 SALA 1: CINTAS MÁSTER FUNDACIONALES
@@ -319,7 +343,7 @@ export default function MuseumScreen({ navigation }) {
                       ]}
                       onPress={() => playMuseumSample(piece)}
                     >
-                      <Text style={[styles.playSampleText, { color: palette.background }]}>
+                      <Text style={[styles.playSampleText, { color: '#06080D' }]}>
                         {isPlaying ? '❚❚ DETENER MUESTRA' : '▶ ESCUCHAR MUESTRA MÁSTER'}
                       </Text>
                     </Pressable>
