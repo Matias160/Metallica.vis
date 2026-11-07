@@ -1,7 +1,6 @@
 // Catálogo oficial: exploración de pistas masterizadas, tiradas físicas, escáner QR y modo día/noche en TypeScript.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Image,
   Pressable,
@@ -10,19 +9,127 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import {
+  Search,
+  X,
+  Maximize2,
+  Sun,
+  Moon,
+  Clock,
+  ArrowDownAZ,
+  ArrowUpZA,
+  Calendar,
+  Sparkles,
+  Archive,
+  Disc3,
+  ArrowUp,
+  Radio,
+  SlidersHorizontal
+} from 'lucide-react-native';
+
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { useSync } from '../../context/SyncContext';
 import { useTheme } from '../../context/ThemeContext';
 import QrScannerModal from '../../components/QrScannerModal';
-import { shadows } from '../../theme/colors';
+import { themeTokens } from '../../theme/theme';
+import { GlowCard } from '../../components/ui/GlowCard';
+import { PremiumButton } from '../../components/ui/PremiumButton';
+import { Badge } from '../../components/ui/Badge';
+import { Chip } from '../../components/ui/Chip';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { Track } from '../../types';
+
+// Componente de Barra de Stock Animada con LinearGradient
+function AnimatedStockBar({
+  percentage,
+  isSoldOut,
+  palette
+}: {
+  percentage: number;
+  isSoldOut: boolean;
+  palette: any;
+}) {
+  const widthAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(widthAnim, {
+      toValue: Math.max(0, Math.min(percentage, 100)),
+      duration: 800,
+      useNativeDriver: false
+    }).start();
+  }, [percentage]);
+
+  return (
+    <View style={[styles.stockBarTrack, { backgroundColor: palette.surfaceDark || '#090C14' }]}>
+      <Animated.View
+        style={{
+          height: '100%',
+          width: widthAnim.interpolate({
+            inputRange: [0, 100],
+            outputRange: ['0%', '100%']
+          }),
+          borderRadius: 3,
+          overflow: 'hidden'
+        }}
+      >
+        <LinearGradient
+          colors={
+            isSoldOut
+              ? ['#EF4444', '#991B1B']
+              : percentage > 35
+              ? ['#FBBF24', '#D97706']
+              : ['#F59E0B', '#B45309']
+          }
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+    </View>
+  );
+}
+
+// Skeleton Loader para el Catálogo
+function CatalogSkeletonList({ palette }: { palette: any }) {
+  return (
+    <View style={styles.skeletonContainer}>
+      {[1, 2, 3].map((key) => (
+        <View
+          key={key}
+          style={[
+            styles.card,
+            { backgroundColor: palette.surface || '#121624', borderColor: palette.border || '#232B40' }
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <Skeleton width={88} height={88} borderRadius={12} palette={palette} />
+            <View style={{ flex: 1, marginLeft: 16, gap: 10 }}>
+              <Skeleton width="75%" height={22} borderRadius={6} palette={palette} />
+              <Skeleton width="45%" height={16} borderRadius={4} palette={palette} />
+              <Skeleton width="30%" height={14} borderRadius={4} palette={palette} />
+            </View>
+          </View>
+          <View style={{ marginTop: 18, gap: 10 }}>
+            <Skeleton width="100%" height={14} borderRadius={4} palette={palette} />
+            <Skeleton width="90%" height={14} borderRadius={4} palette={palette} />
+          </View>
+          <View style={{ marginTop: 16 }}>
+            <Skeleton width="100%" height={46} borderRadius={10} palette={palette} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export default function HomeScreen({ navigation }: { navigation: any }): React.JSX.Element {
   const { token, user } = useAuth();
@@ -36,6 +143,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [claimingId, setClaimingId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchFocused, setSearchFocused] = useState<boolean>(false);
   const [filterType, setFilterType] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'az' | 'za' | 'oldest'>('recent');
   const [scannerVisible, setScannerVisible] = useState<boolean>(false);
@@ -64,7 +172,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
     }
   }, [token]);
 
-  // Actualización automática al recibir foco en la pestaña (sin reiniciar la app)
+  // Actualización automática al recibir foco en la pestaña
   useFocusEffect(
     useCallback(() => {
       loadData().finally(() => setLoading(false));
@@ -81,7 +189,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
     setRefreshing(false);
   }
 
-  async function handleClaim(pressing, trackTitle) {
+  async function handleClaim(pressing: any, trackTitle: string) {
     if (!pressing || !pressing.id) {
       notify('Tirada no disponible', 'Esta pista no tiene una tirada física activa configurada.', 'warning');
       return;
@@ -104,7 +212,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
       );
       await loadData();
       triggerSync('tape_claimed_from_home');
-    } catch (error) {
+    } catch (error: any) {
       notify('No se pudo adquirir la copia', error.message, 'error');
     } finally {
       setClaimingId(null);
@@ -143,13 +251,13 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
         return b.title.localeCompare(a.title);
       }
       if (sortBy === 'oldest') {
-        const timeA = new Date(a.created_at || a.createdAt || 0).getTime() || a.id;
-        const timeB = new Date(b.created_at || b.createdAt || 0).getTime() || b.id;
+        const timeA = new Date((a as any).created_at || (a as any).createdAt || 0).getTime() || a.id;
+        const timeB = new Date((b as any).created_at || (b as any).createdAt || 0).getTime() || b.id;
         return timeA - timeB;
       }
       // 'recent' (más reciente primero)
-      const timeA = new Date(a.created_at || a.createdAt || 0).getTime() || a.id;
-      const timeB = new Date(b.created_at || b.createdAt || 0).getTime() || b.id;
+      const timeA = new Date((a as any).created_at || (a as any).createdAt || 0).getTime() || a.id;
+      const timeB = new Date((b as any).created_at || (b as any).createdAt || 0).getTime() || b.id;
       return timeB - timeA;
     });
   }, [tracks, pressings, searchQuery, filterType, sortBy]);
@@ -160,7 +268,10 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
       <View
         style={[
           styles.topBar,
-          { backgroundColor: palette.backgroundElevated, borderBottomColor: palette.borderSubtle }
+          {
+            backgroundColor: palette.backgroundElevated || palette.surface,
+            borderBottomColor: palette.borderSubtle
+          }
         ]}
       >
         <View style={styles.topBarInner}>
@@ -168,130 +279,214 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
             <View style={styles.badgeRow}>
               <View style={[styles.liveIndicator, { backgroundColor: palette.accent }]} />
               <Text style={[styles.badgeRowText, { color: palette.muted }]}>
-                TAPE TRADING ARCHIVE · CATÁLOGO
+                TAPE TRADING ARCHIVE · CATÁLOGO MÁSTER
               </Text>
             </View>
 
             <View style={styles.headerRightActions}>
+              {/* Botón QR con borde y fondo cian sutil */}
               <Pressable
-                style={[styles.qrScanBtn, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}
-                onPress={() => setScannerVisible(true)}
+                style={[
+                  styles.headerBtn,
+                  { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }
+                ]}
+                onPress={() => {
+                  try {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  } catch {}
+                  setScannerVisible(true);
+                }}
               >
-                <Feather name="maximize" size={13} color={palette.cyan} />
-                <Text style={[styles.qrScanBtnText, { color: palette.cyan }]}>QR</Text>
+                <Maximize2 size={13} color={palette.cyan} />
+                <Text style={[styles.headerBtnText, { color: palette.cyan }]}>QR</Text>
               </Pressable>
 
+              {/* Botón Día / Noche */}
               <Pressable
-                style={[styles.themeBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
-                onPress={toggleTheme}
+                style={[
+                  styles.headerBtn,
+                  { backgroundColor: palette.surfaceLight, borderColor: palette.border }
+                ]}
+                onPress={() => {
+                  try {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  } catch {}
+                  toggleTheme();
+                }}
               >
-                <Feather name={isDark ? 'sun' : 'moon'} size={13} color={palette.text} />
-                <Text style={[styles.themeBtnText, { color: palette.text }]}>
+                {isDark ? (
+                  <Sun size={13} color={palette.accent} />
+                ) : (
+                  <Moon size={13} color={palette.text} />
+                )}
+                <Text style={[styles.headerBtnText, { color: palette.text }]}>
                   {isDark ? 'DÍA' : 'NOCHE'}
                 </Text>
               </Pressable>
 
-              <View style={[styles.badgeCount, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}>
-                <Text style={[styles.badgeCountNumber, { color: palette.accent }]}>{tracks.length}</Text>
+              {/* Contador de Masters con Glow de Telemetría */}
+              <View
+                style={[
+                  styles.badgeCount,
+                  { backgroundColor: palette.surfaceLight, borderColor: palette.border },
+                  themeTokens.shadows.amberGlow
+                ]}
+              >
+                <Text style={[styles.badgeCountNumber, { color: palette.accent }]}>
+                  {tracks.length}
+                </Text>
                 <Text style={[styles.badgeCountLabel, { color: palette.muted }]}>MÁSTERS</Text>
               </View>
             </View>
           </View>
 
+          {/* Título en degradado visual de estudio */}
           <View style={styles.titleCol}>
-            <Text style={[styles.title, { color: palette.text }]}>Catálogo de Tiradas</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={[styles.title, { color: palette.text }]}>Catálogo de Tiradas</Text>
+              <View style={[styles.analogTag, { borderColor: palette.amberBorder, backgroundColor: palette.amberMuted }]}>
+                <Text style={[styles.analogTagText, { color: palette.amber }]}>STUDIO REEL</Text>
+              </View>
+            </View>
             <Text style={[styles.subtitle, { color: palette.muted }]}>
-              Cintas máster físicas en tiradas estrictamente limitadas y numeradas.
+              Cintas máster físicas en tiradas estrictamente limitadas, numeradas y custodiadas.
             </Text>
           </View>
         </View>
 
-        {/* Buscador & Filtros */}
+        {/* Buscador con Resplandor de Foco */}
         <View style={styles.searchFilterRow}>
-          <View style={[styles.searchBox, { backgroundColor: palette.surfaceDark, borderColor: palette.border }]}>
-            <Feather name="search" size={14} color={palette.muted} style={{ marginRight: 8 }} />
+          <View
+            style={[
+              styles.searchBox,
+              {
+                backgroundColor: palette.surfaceDark || '#090C14',
+                borderColor: searchFocused ? palette.accent : palette.border
+              },
+              searchFocused && themeTokens.shadows.amberGlow
+            ]}
+          >
+            <Search
+              size={15}
+              color={searchFocused ? palette.accent : palette.muted}
+              style={{ marginRight: 8 }}
+            />
             <TextInput
-              placeholder="Buscar por pista, artista o género..."
+              placeholder="Buscar por pista, artista, tirada o linaje..."
               placeholderTextColor={palette.mutedDark}
               style={[styles.searchInput, { color: palette.text }]}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
             />
             {searchQuery ? (
-              <Pressable onPress={() => setSearchQuery('')} hitSlop={10}>
-                <Feather name="x" size={14} color={palette.muted} />
+              <Pressable
+                onPress={() => setSearchQuery('')}
+                hitSlop={10}
+                style={{ padding: 4 }}
+              >
+                <X size={15} color={palette.muted} />
               </Pressable>
             ) : null}
           </View>
 
-          <View style={styles.filtersScroll}>
+          {/* Chips de Filtro con Micro-Animación de Selección */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersScroll}
+          >
             {[
               { id: 'all', label: `Todas (${tracks.length})`, icon: null },
-              { id: 'featured', label: `Destacadas (${tracks.filter((t) => t.is_featured).length})`, icon: 'star' },
-              { id: 'available', label: 'En Stock', icon: 'archive' },
-              { id: 'verified', label: 'Sellos', icon: 'check' }
+              {
+                id: 'featured',
+                label: `Destacadas (${tracks.filter((t) => t.is_featured).length})`,
+                icon: <Sparkles size={12} color={filterType === 'featured' ? palette.accent : palette.muted} />
+              },
+              {
+                id: 'available',
+                label: 'En Stock',
+                icon: <Archive size={12} color={filterType === 'available' ? palette.accent : palette.muted} />
+              },
+              {
+                id: 'verified',
+                label: 'Sellos',
+                icon: <Disc3 size={12} color={filterType === 'verified' ? palette.accent : palette.muted} />
+              }
             ].map((f) => (
-              <Pressable
+              <Chip
                 key={f.id}
-                style={[
-                  styles.filterChip,
-                  { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle },
-                  filterType === f.id && [styles.filterChipActive, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]
-                ]}
+                label={f.label}
+                selected={filterType === f.id}
                 onPress={() => setFilterType(f.id)}
-              >
-                {f.icon ? (
-                  <Feather
-                    name={f.icon as any}
-                    size={11}
-                    color={filterType === f.id ? palette.accent : palette.muted}
-                    style={{ marginRight: 5 }}
-                  />
-                ) : null}
-                <Text
-                  style={[
-                    styles.filterText,
-                    { color: filterType === f.id ? palette.accent : palette.muted }
-                  ]}
-                >
-                  {f.label}
-                </Text>
-              </Pressable>
+                icon={f.icon}
+                palette={palette}
+              />
             ))}
-          </View>
+          </ScrollView>
 
           {/* Barra de Ordenamiento por Tiempo y de A a la Z */}
           <View style={styles.sortBarRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Feather name="bar-chart-2" size={12} color={palette.muted} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <SlidersHorizontal size={13} color={palette.muted} />
               <Text style={[styles.sortLabel, { color: palette.muted }]}>ORDEN:</Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortScroll}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.sortScroll}
+            >
               {[
-                { id: 'recent', label: 'Más Recientes', icon: 'clock' as const },
-                { id: 'az', label: 'A → Z', icon: 'type' as const },
-                { id: 'za', label: 'Z → A', icon: 'type' as const },
-                { id: 'oldest', label: 'Primeras Tiradas', icon: 'calendar' as const }
+                {
+                  id: 'recent',
+                  label: 'Más Recientes',
+                  icon: <Clock size={11} color={sortBy === 'recent' ? palette.accent : palette.muted} />
+                },
+                {
+                  id: 'az',
+                  label: 'A → Z',
+                  icon: <ArrowDownAZ size={11} color={sortBy === 'az' ? palette.accent : palette.muted} />
+                },
+                {
+                  id: 'za',
+                  label: 'Z → A',
+                  icon: <ArrowUpZA size={11} color={sortBy === 'za' ? palette.accent : palette.muted} />
+                },
+                {
+                  id: 'oldest',
+                  label: 'Primeras Tiradas',
+                  icon: <Calendar size={11} color={sortBy === 'oldest' ? palette.accent : palette.muted} />
+                }
               ].map((s) => (
                 <Pressable
                   key={s.id}
                   style={[
                     styles.sortChip,
-                    { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle },
-                    sortBy === s.id && [styles.sortChipActive, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]
+                    {
+                      backgroundColor:
+                        sortBy === s.id
+                          ? palette.accentMuted || 'rgba(245, 158, 11, 0.15)'
+                          : palette.surfaceDark || '#090C14',
+                      borderColor: sortBy === s.id ? palette.accent : palette.borderSubtle
+                    },
+                    sortBy === s.id && themeTokens.shadows.amberGlow
                   ]}
-                  onPress={() => setSortBy(s.id as any)}
+                  onPress={() => {
+                    try {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    } catch {}
+                    setSortBy(s.id as any);
+                  }}
                 >
-                  <Feather
-                    name={s.icon}
-                    size={10}
-                    color={sortBy === s.id ? palette.accent : palette.muted}
-                    style={{ marginRight: 4 }}
-                  />
+                  <View style={{ marginRight: 5 }}>{s.icon}</View>
                   <Text
                     style={[
                       styles.sortChipText,
-                      { color: sortBy === s.id ? palette.accent : palette.muted }
+                      {
+                        color: sortBy === s.id ? palette.accent : palette.muted,
+                        fontWeight: sortBy === s.id ? '800' : '600'
+                      }
                     ]}
                   >
                     {s.label}
@@ -303,13 +498,9 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
         </View>
       </View>
 
+      {/* Cuerpo del Catálogo: Skeletons vs Lista Oficial */}
       {loading ? (
-        <View style={styles.centerLoading}>
-          <ActivityIndicator color={palette.accent} size="large" />
-          <Text style={[styles.loadingText, { color: palette.muted }]}>
-            Cargando tiradas maestras...
-          </Text>
-        </View>
+        <CatalogSkeletonList palette={palette} />
       ) : (
         <FlatList
           ref={listRef}
@@ -320,7 +511,11 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
           onScroll={handleScroll}
           scrollEventThrottle={16}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.accent} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={palette.accent}
+            />
           }
           renderItem={({ item }) => {
             const trackPressing = pressings.find((p) => p.track_id === item.id);
@@ -331,180 +526,259 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
             const percentageLeft = total > 0 ? (available / total) * 100 : 0;
 
             return (
-              <View
+              <GlowCard
+                variant={item.is_featured ? 'amberGlow' : 'surface'}
+                palette={palette}
                 style={[
                   styles.card,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                  shadows.md
+                  { backgroundColor: palette.surface, borderColor: palette.border }
                 ]}
               >
-                {/* Tornillos de esquina analógicos */}
+                {/* Tornillos de esquina analógicos de consola */}
                 <View style={[styles.screw, styles.screwTL]} />
                 <View style={[styles.screw, styles.screwTR]} />
                 <View style={[styles.screw, styles.screwBL]} />
                 <View style={[styles.screw, styles.screwBR]} />
 
-                {/* Cabecera de la Pista */}
+                {/* Cabecera de la Pista: Portada de Vinilo / Sleeve Grande */}
                 <View style={styles.cardHeader}>
                   {item.cover_url ? (
-                    <View style={styles.albumArtWrapper}>
+                    <View style={styles.vinylSleeveWrapper}>
                       <Image
                         source={{ uri: item.cover_url }}
-                        style={styles.albumCoverImage}
+                        style={styles.vinylCoverImage}
                         resizeMode="cover"
                       />
-                      <View style={[styles.albumArtOverlay, { borderColor: palette.borderSubtle }]} />
-                      {/* Borde sutil de disco asomando */}
-                      <View style={[styles.vinylPeekEdge, { backgroundColor: '#07090e', borderColor: palette.border }]} />
+                      {/* Disco de vinilo asomando con surcos */}
+                      <View
+                        style={[
+                          styles.vinylDiscPeek,
+                          {
+                            backgroundColor: '#05070A',
+                            borderColor: palette.border
+                          }
+                        ]}
+                      >
+                        <View style={[styles.vinylGroove, { borderColor: '#1F2937' }]} />
+                        <View style={[styles.vinylGrooveInner, { borderColor: '#111827' }]} />
+                        <View style={[styles.vinylLabelCenter, { backgroundColor: palette.accent }]} />
+                      </View>
                     </View>
                   ) : (
-                    /* Cassette Sleeve Graphic con Carretes (Fallback) */
-                    <View style={[styles.cassetteThumb, { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle }]}>
+                    /* Sleeve Analógico con carretes de cinta */
+                    <View
+                      style={[
+                        styles.cassetteThumb,
+                        {
+                          backgroundColor: palette.surfaceDark || '#090C14',
+                          borderColor: palette.borderSubtle
+                        }
+                      ]}
+                    >
                       <View style={styles.tapeSpools}>
                         <View style={[styles.tapeSpool, { borderColor: palette.accent }]} />
                         <View style={[styles.tapeWindow, { backgroundColor: palette.surfaceLight }]} />
                         <View style={[styles.tapeSpool, { borderColor: palette.accent }]} />
                       </View>
-                      <Text style={[styles.tapeThumbText, { color: palette.muted }]}>REEL</Text>
+                      <Text style={[styles.tapeThumbText, { color: palette.muted }]}>
+                        ANALOG REEL
+                      </Text>
                     </View>
                   )}
 
                   <View style={styles.trackInfo}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <Text style={[styles.trackTitle, { color: palette.text }]}>{item.title}</Text>
+                    <View style={styles.trackTitleRow}>
+                      <Text style={[styles.trackTitle, { color: palette.text }]} numberOfLines={2}>
+                        {item.title}
+                      </Text>
                       {item.is_featured ? (
-                        <View style={[styles.featuredTag, { backgroundColor: palette.accentMuted, borderColor: palette.accent }]}>
-                          <Feather name="star" size={10} color={palette.accent} />
-                          <Text style={[styles.featuredTagText, { color: palette.accent }]}>DESTACADA</Text>
-                        </View>
+                        <Badge label="DESTACADA" variant="curator" palette={palette} />
                       ) : null}
                     </View>
-                    <View style={styles.artistRow}>
-                      <Text style={[styles.artistName, { color: palette.accent }]}>{item.artist_name}</Text>
-                      {item.verified ? (
-                        <View style={[styles.verifiedTag, { backgroundColor: palette.successMuted, borderColor: palette.successBorder }]}>
-                          <Feather name="check" size={10} color={palette.success} />
-                          <Text style={[styles.verifiedText, { color: palette.success }]}>Sello Verificado</Text>
-                        </View>
-                      ) : null}
-                    </View>
-                  </View>
 
-                  <View style={[styles.licenseTag, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}>
-                    <Text style={[styles.licenseText, { color: palette.muted }]}>{item.license_type}</Text>
+                    <View style={styles.artistRow}>
+                      <Text style={[styles.artistName, { color: palette.accent }]}>
+                        {item.artist_name}
+                      </Text>
+                      {item.verified ? (
+                        <Badge label="SELLO VERIFICADO" variant="verified" palette={palette} animatedPulse />
+                      ) : null}
+                    </View>
+
+                    <View style={styles.metaRow}>
+                      <View
+                        style={[
+                          styles.licenseTag,
+                          { backgroundColor: palette.surfaceLight, borderColor: palette.border }
+                        ]}
+                      >
+                        <Text style={[styles.licenseText, { color: palette.muted }]}>
+                          {item.license_type || 'ORIGINAL'}
+                        </Text>
+                      </View>
+                      {trackPressing && (
+                        <View
+                          style={[
+                            styles.licenseTag,
+                            { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }
+                          ]}
+                        >
+                          <Text style={[styles.licenseText, { color: palette.cyan }]}>
+                            GEN {trackPressing.generation_limit}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </View>
 
                 {item.description ? (
-                  <Text style={[styles.description, { color: palette.textSecondary }]}>{item.description}</Text>
+                  <Text style={[styles.description, { color: palette.textSecondary }]}>
+                    {item.description}
+                  </Text>
                 ) : null}
 
-                {/* Caja de Tirada Física */}
+                {/* Caja de Tirada Física y Barra de Stock */}
                 {trackPressing ? (
-                  <View style={[styles.pressingBox, { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle }]}>
+                  <View
+                    style={[
+                      styles.pressingBox,
+                      {
+                        backgroundColor: palette.surfaceDark || '#090C14',
+                        borderColor: palette.borderSubtle
+                      }
+                    ]}
+                  >
                     <View style={styles.pressingStats}>
                       <View style={styles.statCol}>
-                        <Text style={[styles.statLabel, { color: palette.muted }]}>DISPONIBILIDAD EN BODEGA</Text>
+                        <Text style={[styles.statLabel, { color: palette.muted }]}>
+                          DISPONIBILIDAD EN BODEGA
+                        </Text>
                         <Text
                           style={[
                             styles.statValue,
                             { color: isSoldOut ? palette.danger : palette.accent }
                           ]}
                         >
-                          {available} <Text style={[styles.statTotal, { color: palette.muted }]}>/ {total} COPIAS FÍSICAS</Text>
+                          {available}{' '}
+                          <Text style={[styles.statTotal, { color: palette.muted }]}>
+                            / {total} CINTAS FÍSICAS
+                          </Text>
                         </Text>
                       </View>
 
                       <View style={styles.statRightCol}>
-                        <Text style={[styles.statLabel, { color: palette.muted }]}>LINAJE PERMITIDO</Text>
-                        <View style={[styles.genLimitBadge, { backgroundColor: palette.cyanMuted, borderColor: palette.cyanBorder }]}>
-                          <Text style={[styles.genLimitText, { color: palette.cyan }]}>
-                            Hasta Gen {trackPressing.generation_limit}
+                        <Text style={[styles.statLabel, { color: palette.muted }]}>
+                          ESTADO DE REPRODUCCIÓN
+                        </Text>
+                        <View
+                          style={[
+                            styles.genLimitBadge,
+                            {
+                              backgroundColor: isSoldOut ? palette.dangerMuted : palette.emeraldMuted || '#062E20',
+                              borderColor: isSoldOut ? palette.dangerBorder : palette.emeraldBorder || '#059669'
+                            }
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.genLimitText,
+                              { color: isSoldOut ? palette.danger : palette.emerald || '#10B981' }
+                            ]}
+                          >
+                            {isSoldOut ? 'BODEGA AGOTADA' : 'CUSTODIA MINT 100%'}
                           </Text>
                         </View>
                       </View>
                     </View>
 
-                    {/* Barra de Progreso de Stock */}
-                    <View style={[styles.stockBarBg, { backgroundColor: palette.surfaceLight }]}>
-                      <View
-                        style={[
-                          styles.stockBarFill,
-                          {
-                            width: `${percentageLeft}%`,
-                            backgroundColor:
-                              percentageLeft > 40
-                                ? palette.accent
-                                : percentageLeft > 0
-                                ? palette.warning
-                                : palette.mutedDark
-                          }
-                        ]}
-                      />
-                    </View>
+                    {/* Barra de Progreso de Stock con Gradiente Animado */}
+                    <AnimatedStockBar
+                      percentage={percentageLeft}
+                      isSoldOut={isSoldOut}
+                      palette={palette}
+                    />
 
-                    {/* Tecla de Platina / Botón con Relieve Táctil */}
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.claimBtn,
-                        !isSoldOut && [styles.claimBtnTactile, { backgroundColor: palette.accent }],
-                        isSoldOut && [styles.claimBtnSoldOut, { backgroundColor: palette.surfaceLight, borderColor: palette.border }],
-                        pressed && !isSoldOut && styles.claimBtnPressed,
-                        isClaiming && { opacity: 0.7 }
-                      ]}
-                      disabled={isSoldOut || isClaiming}
-                      onPress={() => handleClaim(trackPressing, item.title)}
-                    >
-                      {isClaiming ? (
-                        <ActivityIndicator color={palette.background} size="small" />
-                      ) : (
-                        <Text
-                          style={[
-                            styles.claimBtnText,
-                            { color: isSoldOut ? palette.mutedDark : '#090a0f' }
-                          ]}
-                        >
-                          {isSoldOut ? 'TIRADA AGOTADA' : 'ADQUIRIR CINTA FÍSICA · NUMERADA'}
-                        </Text>
-                      )}
-                    </Pressable>
+                    {/* Botón de Adquirir Cinta con Brillo Superior y LinearGradient */}
+                    <View style={{ marginTop: 14 }}>
+                      <PremiumButton
+                        onPress={() => handleClaim(trackPressing, item.title)}
+                        disabled={isSoldOut || Boolean(isClaiming)}
+                        variant={isSoldOut ? 'secondary' : 'primary'}
+                        size="md"
+                        style={{ width: '100%' }}
+                        palette={palette}
+                        icon={
+                          isClaiming ? null : (
+                            <Archive
+                              size={15}
+                              color={isSoldOut ? palette.textMuted : '#06080D'}
+                            />
+                          )
+                        }
+                      >
+                        {isClaiming
+                          ? 'PROCESANDO RECLAMO...'
+                          : isSoldOut
+                          ? 'TIRADA COMPLETAMENTE AGOTADA'
+                          : 'ADQUIRIR CINTA FÍSICA · NUMERADA'}
+                      </PremiumButton>
+                    </View>
                   </View>
                 ) : (
-                  <View style={[styles.noPressingBox, { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle }]}>
+                  <View
+                    style={[
+                      styles.noPressingBox,
+                      {
+                        backgroundColor: palette.surfaceDark || '#090C14',
+                        borderColor: palette.borderSubtle
+                      }
+                    ]}
+                  >
                     <Text style={[styles.noPressingText, { color: palette.mutedDark }]}>
-                      Sin tirada física activa en este momento.
+                      Sin tirada física activa configurada para este máster.
                     </Text>
                   </View>
                 )}
-              </View>
+              </GlowCard>
             );
           }}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📼</Text>
-              <Text style={[styles.emptyTitle, { color: palette.text }]}>Sin pistas encontradas</Text>
+              <View
+                style={[
+                  styles.emptyIconCircle,
+                  { backgroundColor: palette.surfaceDark, borderColor: palette.border }
+                ]}
+              >
+                <Radio size={36} color={palette.accent} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: palette.text }]}>
+                Sin pistas encontradas
+              </Text>
               <Text style={[styles.emptySub, { color: palette.muted }]}>
                 {searchQuery
-                  ? 'No hay resultados para tu búsqueda. Probá con otro término.'
-                  : 'Todavía no hay pistas ni tiradas registradas. Si sos Artista o Admin podés subir la primera desde "Estudio Artista".'}
+                  ? 'No hay resultados para tu búsqueda. Probá con otro término o limpiá el filtro.'
+                  : 'Todavía no hay pistas ni tiradas registradas en el archivo de másters.'}
               </Text>
             </View>
           }
         />
       )}
 
-      {/* Botón flotante pequeño para subir al inicio al hacer scroll hacia abajo */}
+      {/* Botón Flotante para Scroll Top */}
       {showScrollTop && (
         <Pressable
           style={({ pressed }) => [
-            (styles as any).scrollTopBtn,
+            styles.scrollTopBtn,
             { backgroundColor: palette.surface, borderColor: palette.accent },
-            pressed && { opacity: 0.7, transform: [{ scale: 0.92 }] }
+            themeTokens.shadows.amberGlow,
+            pressed && { opacity: 0.75, transform: [{ scale: 0.92 }] }
           ]}
           onPress={scrollToTop}
-          accessibilityLabel="Subir al inicio"
+          accessibilityLabel="Subir al inicio del catálogo"
         >
-          <Feather name="arrow-up" size={16} color={palette.accent} />
+          <ArrowUp size={16} color={palette.accent} />
         </Pressable>
       )}
 
@@ -513,7 +787,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
         visible={scannerVisible}
         onClose={() => setScannerVisible(false)}
         onOpenTape={(tape) => {
-          notify('Cinta Validada', `Copia #${tape.copyNumber} lista en colección.`, 'success');
+          notify('Cinta Validada', `Copia #${tape.copyNumber} lista en tu vitrina.`, 'success');
         }}
       />
     </SafeAreaView>
@@ -527,7 +801,7 @@ const styles = StyleSheet.create({
   topBar: {
     paddingHorizontal: 16,
     paddingTop: 10,
-    paddingBottom: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1
   },
   topBarInner: {
@@ -547,74 +821,76 @@ const styles = StyleSheet.create({
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4
+    gap: 6
   },
   liveIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3
+    width: 7,
+    height: 7,
+    borderRadius: 4
   },
   badgeRowText: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 1.2
   },
   title: {
-    fontSize: 24,
-    fontWeight: '900',
-    letterSpacing: -0.5
+    fontSize: 25,
+    fontWeight: '800',
+    letterSpacing: -0.6
+  },
+  analogTag: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1
+  },
+  analogTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 4,
-    lineHeight: 17,
-    maxWidth: 440
+    lineHeight: 18,
+    maxWidth: 480
   },
   headerRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8
   },
-  qrScanBtn: {
+  headerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 8
   },
-  qrScanBtnText: {
+  headerBtnText: {
     fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5
-  },
-  themeBtn: {
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8
-  },
-  themeBtnText: {
-    fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '800',
     letterSpacing: 0.5
   },
   badgeCount: {
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center'
   },
   badgeCountNumber: {
-    fontSize: 16,
-    fontWeight: '900'
+    fontSize: 15,
+    fontWeight: '800',
+    lineHeight: 17
   },
   badgeCountLabel: {
-    fontSize: 8,
+    fontSize: 7.5,
     fontWeight: '800',
-    letterSpacing: 0.5,
-    marginTop: 1
+    letterSpacing: 0.6
   },
   searchFilterRow: {
     maxWidth: 1200,
@@ -626,48 +902,30 @@ const styles = StyleSheet.create({
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8
-  },
-  searchIcon: {
-    fontSize: 12
+    borderRadius: 12,
+    borderWidth: 1.2,
+    paddingHorizontal: 14,
+    paddingVertical: 9
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 13.5,
     padding: 0
-  },
-  clearSearch: {
-    fontSize: 18,
-    paddingHorizontal: 4
   },
   filtersScroll: {
     flexDirection: 'row',
-    gap: 8
-  },
-  filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1
-  },
-  filterChipActive: {},
-  filterText: {
-    fontSize: 11,
-    fontWeight: '700'
+    alignItems: 'center',
+    paddingVertical: 2
   },
   sortBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 4
+    marginTop: 2
   },
   sortLabel: {
-    fontSize: 9,
-    fontWeight: '900',
+    fontSize: 9.5,
+    fontWeight: '800',
     letterSpacing: 0.8
   },
   sortScroll: {
@@ -678,37 +936,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1
   },
-  sortChipActive: {},
   sortChipText: {
-    fontSize: 10,
-    fontWeight: '800'
+    fontSize: 10.5
   },
   listContent: {
     padding: 16,
-    paddingBottom: 36,
+    paddingBottom: 40,
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center'
   },
-  centerLoading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12
-  },
-  loadingText: {
-    fontSize: 13,
-    fontWeight: '600'
+  skeletonContainer: {
+    padding: 16,
+    maxWidth: 1200,
+    width: '100%',
+    alignSelf: 'center',
+    gap: 16
   },
   card: {
     borderRadius: 18,
     padding: 20,
     marginBottom: 16,
-    borderWidth: 1.5,
     position: 'relative'
   },
   screw: {
@@ -716,123 +968,130 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#323c52',
+    backgroundColor: '#323C52',
     borderWidth: 1,
     borderColor: '#151924'
   },
-  screwTL: { top: 8, left: 8 },
-  screwTR: { top: 8, right: 8 },
-  screwBL: { bottom: 8, left: 8 },
-  screwBR: { bottom: 8, right: 8 },
+  screwTL: { top: 9, left: 9 },
+  screwTR: { top: 9, right: 9 },
+  screwBL: { bottom: 9, left: 9 },
+  screwBR: { bottom: 9, right: 9 },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14
+    gap: 16
   },
-  albumArtWrapper: {
+  vinylSleeveWrapper: {
     position: 'relative',
-    width: 62,
-    height: 62,
+    width: 86,
+    height: 86,
+    justifyContent: 'center'
+  },
+  vinylCoverImage: {
+    width: 78,
+    height: 78,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  albumCoverImage: {
-    width: 58,
-    height: 58,
-    borderRadius: 8,
     zIndex: 2,
-    backgroundColor: '#121622'
-  },
-  albumArtOverlay: {
-    position: 'absolute',
-    width: 58,
-    height: 58,
-    borderRadius: 8,
+    backgroundColor: '#121622',
     borderWidth: 1,
-    zIndex: 3,
-    pointerEvents: 'none'
+    borderColor: 'rgba(255, 255, 255, 0.08)'
   },
-  vinylPeekEdge: {
+  vinylDiscPeek: {
     position: 'absolute',
     right: -4,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    borderWidth: 1.5,
+    zIndex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 5
+  },
+  vinylGroove: {
     width: 54,
     height: 54,
     borderRadius: 27,
-    borderWidth: 1,
-    zIndex: 1,
-    opacity: 0.6
+    borderWidth: 1
+  },
+  vinylGrooveInner: {
+    position: 'absolute',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1
+  },
+  vinylLabelCenter: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: 9
   },
   cassetteThumb: {
-    width: 56,
-    height: 50,
-    borderRadius: 8,
+    width: 80,
+    height: 74,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 4
+    padding: 6
   },
   tapeSpools: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4
+    gap: 6
   },
   tapeSpool: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     borderWidth: 2
   },
   tapeWindow: {
-    width: 14,
-    height: 6,
+    width: 16,
+    height: 7,
     borderRadius: 2
   },
   tapeThumbText: {
     fontSize: 8,
-    fontWeight: '900',
-    marginTop: 4,
+    fontWeight: '800',
+    marginTop: 6,
     letterSpacing: 0.8
   },
   trackInfo: {
     flex: 1
   },
+  trackTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap'
+  },
   trackTitle: {
     fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: -0.3
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    flexShrink: 1
   },
   artistRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 4,
+    marginTop: 5,
     flexWrap: 'wrap'
   },
   artistName: {
     fontWeight: '800',
-    fontSize: 13
+    fontSize: 13.5
   },
-  verifiedTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1
-  },
-  featuredTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1
-  },
-  featuredTagText: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.5
-  },
-  verifiedText: {
-    fontSize: 10,
-    fontWeight: '800'
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8
   },
   licenseTag: {
     paddingHorizontal: 8,
@@ -842,14 +1101,14 @@ const styles = StyleSheet.create({
   },
   licenseText: {
     fontSize: 9,
-    fontWeight: '900',
+    fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 0.5
+    letterSpacing: 0.6
   },
   description: {
-    fontSize: 13,
-    marginTop: 12,
-    lineHeight: 18
+    fontSize: 13.5,
+    marginTop: 14,
+    lineHeight: 19
   },
   pressingBox: {
     borderRadius: 14,
@@ -861,7 +1120,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8
+    marginBottom: 10
   },
   statCol: {},
   statRightCol: {
@@ -869,12 +1128,12 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 9,
-    fontWeight: '900',
+    fontWeight: '800',
     letterSpacing: 0.8
   },
   statValue: {
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '800',
     marginTop: 2
   },
   statTotal: {
@@ -883,48 +1142,20 @@ const styles = StyleSheet.create({
   },
   genLimitBadge: {
     borderWidth: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 5,
     marginTop: 3
   },
   genLimitText: {
     fontSize: 10,
     fontWeight: '800'
   },
-  stockBarBg: {
-    height: 5,
+  stockBarTrack: {
+    height: 6,
     borderRadius: 3,
     overflow: 'hidden',
-    marginBottom: 14
-  },
-  stockBarFill: {
-    height: '100%',
-    borderRadius: 3
-  },
-  claimBtn: {
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  claimBtnTactile: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.4)',
-    borderBottomWidth: 3,
-    borderBottomColor: '#b45309'
-  },
-  claimBtnPressed: {
-    transform: [{ translateY: 2 }],
-    borderBottomWidth: 1
-  },
-  claimBtnSoldOut: {
-    borderWidth: 1
-  },
-  claimBtnText: {
-    fontWeight: '900',
-    fontSize: 13,
-    letterSpacing: 1.2
+    marginBottom: 4
   },
   noPressingBox: {
     padding: 14,
@@ -939,12 +1170,17 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 64,
     paddingHorizontal: 24
   },
-  emptyIcon: {
-    fontSize: 40,
-    marginBottom: 12
+  emptyIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14
   },
   emptyTitle: {
     fontSize: 18,
@@ -954,28 +1190,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 13,
     marginTop: 6,
-    lineHeight: 19
+    lineHeight: 19,
+    maxWidth: 400
   },
   scrollTopBtn: {
     position: 'absolute',
     bottom: 24,
     right: 24,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 99,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 6,
-    elevation: 8
-  },
-  scrollTopBtnText: {
-    fontSize: 13,
-    fontWeight: '900',
-    marginTop: -2
+    zIndex: 99
   }
 });

@@ -1,11 +1,21 @@
 // Define la navegación pública y privada con soporte para Modo Museo, Estudio y Admin en TypeScript.
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StyleSheet, View, Text } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { StyleSheet, View, Animated, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
+import {
+  Disc3,
+  Archive,
+  Award,
+  Sliders,
+  Shield,
+  User
+} from 'lucide-react-native';
+
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { themeTokens } from '../theme/theme';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/home/HomeScreen';
@@ -28,23 +38,65 @@ export function AuthStack(): React.JSX.Element {
 }
 
 interface TabIconProps {
-  name: keyof typeof Feather.glyphMap;
+  name: 'disc' | 'archive' | 'award' | 'sliders' | 'shield' | 'user';
   focused: boolean;
   color: string;
+  palette: any;
 }
 
-function TabIcon({ name, focused, color }: TabIconProps): React.JSX.Element {
+function TabIcon({ name, focused, color, palette }: TabIconProps): React.JSX.Element {
+  const scaleAnim = useRef(new Animated.Value(focused ? 1.05 : 1)).current;
+
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: focused ? 1.08 : 1,
+      useNativeDriver: true,
+      friction: 6,
+      tension: 200
+    }).start();
+  }, [focused]);
+
+  const renderIcon = () => {
+    const iconSize = 19;
+    const iconColor = focused ? palette.accent : palette.muted;
+    switch (name) {
+      case 'disc':
+        return <Disc3 size={iconSize} color={iconColor} />;
+      case 'archive':
+        return <Archive size={iconSize} color={iconColor} />;
+      case 'award':
+        return <Award size={iconSize} color={iconColor} />;
+      case 'sliders':
+        return <Sliders size={iconSize} color={iconColor} />;
+      case 'shield':
+        return <Shield size={iconSize} color={iconColor} />;
+      case 'user':
+        return <User size={iconSize} color={iconColor} />;
+    }
+  };
+
   return (
-    <View style={navStyles.iconWrap}>
-      <Feather name={name} size={18} color={focused ? color : '#64748b'} />
-      {focused && <View style={[navStyles.activeDot, { backgroundColor: color }]} />}
-    </View>
+    <Animated.View style={[navStyles.iconWrap, { transform: [{ scale: scaleAnim }] }]}>
+      <View
+        style={[
+          navStyles.pillContainer,
+          focused && {
+            backgroundColor: palette.amberMuted || 'rgba(245, 158, 11, 0.16)',
+            borderColor: palette.amberBorder || 'rgba(245, 158, 11, 0.45)',
+            borderWidth: 1
+          },
+          focused && themeTokens.shadows.amberGlow
+        ]}
+      >
+        {renderIcon()}
+      </View>
+    </Animated.View>
   );
 }
 
 export function MainStack(): React.JSX.Element {
   const { user } = useAuth();
-  const { palette } = useTheme();
+  const { palette, isDark } = useTheme();
   const roles = user?.roles || [];
   const isArtist = roles.includes('artist') || roles.includes('admin');
   const isAdmin = roles.includes('admin');
@@ -53,31 +105,54 @@ export function MainStack(): React.JSX.Element {
     <Tabs.Navigator
       id="main-tabs"
       screenOptions={{
-        headerShown: false, // Desactivar header nativo redundante: cada pantalla tiene su top bar de estudio
+        headerShown: false,
         tabBarLabelStyle: {
-          fontSize: 9,
+          fontSize: 9.5,
           fontWeight: '800',
-          letterSpacing: 0.2,
-          marginTop: -2
+          letterSpacing: 0.3,
+          marginTop: 2
         },
         tabBarItemStyle: {
-          paddingHorizontal: 1
+          paddingHorizontal: 2
         },
         tabBarStyle: {
-          backgroundColor: palette.surface,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: Platform.select({
+            ios: 'transparent',
+            android: palette.surface,
+            default: palette.surface
+          }),
           borderTopWidth: 1,
-          borderTopColor: palette.border,
-          minHeight: 58,
-          paddingBottom: 6,
-          paddingTop: 4,
+          borderTopColor: palette.borderSubtle,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 6,
+          elevation: 14,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.35,
-          shadowRadius: 10,
-          elevation: 12
+          shadowOpacity: 0.4,
+          shadowRadius: 12
         },
+        tabBarBackground: () =>
+          Platform.OS === 'ios' ? (
+            <BlurView
+              intensity={45}
+              tint={isDark ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: isDark ? 'rgba(17, 23, 38, 0.95)' : 'rgba(255, 255, 255, 0.96)' }
+              ]}
+            />
+          ),
         tabBarActiveTintColor: palette.accent,
-        tabBarInactiveTintColor: palette.mutedDark
+        tabBarInactiveTintColor: palette.muted
       }}
     >
       <Tabs.Screen
@@ -86,7 +161,7 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Catálogo',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon name="disc" focused={focused} color={color} />
+            <TabIcon name="disc" focused={focused} color={color} palette={palette} />
           )
         }}
       />
@@ -96,23 +171,21 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Cintas',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon name="archive" focused={focused} color={color} />
+            <TabIcon name="archive" focused={focused} color={color} palette={palette} />
           )
         }}
       />
-      {/* Tab Modo Museo: exhibición pública, másters históricos y certificados */}
       <Tabs.Screen
         name="Museo"
         component={MuseumScreen}
         options={{
           tabBarLabel: 'Museo',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon name="award" focused={focused} color={color} />
+            <TabIcon name="award" focused={focused} color={color} palette={palette} />
           )
         }}
       />
 
-      {/* Tab exclusivo para Artistas y Admin: ABML de Pistas, Subida y Tiradas */}
       {isArtist && (
         <Tabs.Screen
           name="Estudio"
@@ -120,13 +193,12 @@ export function MainStack(): React.JSX.Element {
           options={{
             tabBarLabel: 'Estudio',
             tabBarIcon: ({ focused, color }) => (
-              <TabIcon name="sliders" focused={focused} color={color} />
+              <TabIcon name="sliders" focused={focused} color={color} palette={palette} />
             )
           }}
         />
       )}
 
-      {/* Tab exclusivo para Administradores: Auditoría y Verificación */}
       {isAdmin && (
         <Tabs.Screen
           name="Admin"
@@ -134,7 +206,7 @@ export function MainStack(): React.JSX.Element {
           options={{
             tabBarLabel: 'Admin',
             tabBarIcon: ({ focused, color }) => (
-              <TabIcon name="shield" focused={focused} color={color} />
+              <TabIcon name="shield" focused={focused} color={color} palette={palette} />
             )
           }}
         />
@@ -146,7 +218,7 @@ export function MainStack(): React.JSX.Element {
         options={{
           tabBarLabel: 'Perfil',
           tabBarIcon: ({ focused, color }) => (
-            <TabIcon name="user" focused={focused} color={color} />
+            <TabIcon name="user" focused={focused} color={color} palette={palette} />
           )
         }}
       />
@@ -158,13 +230,14 @@ const navStyles = StyleSheet.create({
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 32,
-    height: 26
+    width: 44,
+    height: 32
   },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 3
+  pillContainer: {
+    paddingHorizontal: 12,
+    paddingVertical: 3.5,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 });

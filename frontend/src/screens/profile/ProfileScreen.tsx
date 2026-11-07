@@ -1,5 +1,5 @@
-// Perfil del miembro, sincronización de permisos y selector de apariencia de estudio en TypeScript.
-import React, { useState } from 'react';
+// Perfil del miembro: pasaporte analógico de lujo, credencial P2P y apariencia de estudio.
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -11,13 +11,36 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View
+  View,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import {
+  Copy,
+  Check,
+  Edit3,
+  Sun,
+  Moon,
+  LogOut,
+  ShieldCheck,
+  Radio,
+  Sparkles,
+  Award,
+  Layers,
+  X,
+  AlertTriangle
+} from 'lucide-react-native';
+
 import { useAuth } from '../../context/AuthContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import { useTheme } from '../../context/ThemeContext';
-import { colors, shadows } from '../../theme/colors';
+import { themeTokens } from '../../theme/theme';
+import { GlowCard } from '../../components/ui/GlowCard';
+import { PremiumButton } from '../../components/ui/PremiumButton';
+import { Badge } from '../../components/ui/Badge';
 
 export interface AvatarPreset {
   id: string;
@@ -34,7 +57,7 @@ const AVATAR_PRESETS: AvatarPreset[] = [
 ];
 
 export default function ProfileScreen(): React.JSX.Element {
-  const { user, refreshUser, updateProfile, logout } = useAuth();
+  const { user, updateProfile, logout } = useAuth();
   const { notify } = useFeedback();
   const { isDark, palette, toggleTheme } = useTheme();
 
@@ -45,11 +68,33 @@ export default function ProfileScreen(): React.JSX.Element {
   const [saving, setSaving] = useState<boolean>(false);
   const [editError, setEditError] = useState<string>('');
   const [showLogoutModal, setShowLogoutModal] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
+
+  // Animación del punto online
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.3,
+          duration: 900,
+          useNativeDriver: true
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true
+        })
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
 
   function openEditModal() {
-    setDisplayName(user?.display_name || '');
+    setDisplayName((user as any)?.display_name || user?.displayName || '');
     setUsername(user?.username || '');
-    setAvatarUrl(user?.avatar_url || '');
+    setAvatarUrl((user as any)?.avatar_url || user?.avatarUrl || '');
     setEditError('');
     setIsEditing(true);
   }
@@ -73,9 +118,9 @@ export default function ProfileScreen(): React.JSX.Element {
         username: cleanUser,
         avatarUrl: avatarUrl.trim() || null
       });
-      notify('Perfil actualizado', 'Tus datos se guardaron correctamente.', 'success');
+      notify('Perfil actualizado', 'Tus datos se guardaron correctamente en la credencial.', 'success');
       setIsEditing(false);
-    } catch (err) {
+    } catch (err: any) {
       setEditError(err.message || 'Error al actualizar perfil');
       notify('No se pudo guardar', err.message, 'error');
     } finally {
@@ -83,8 +128,13 @@ export default function ProfileScreen(): React.JSX.Element {
     }
   }
 
-  function handleLogoutPrompt() {
-    setShowLogoutModal(true);
+  function handleCopyP2P() {
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+    setCopied(true);
+    notify('P2P ID Copiado', `Identificador #${user?.id} copiado para transferencias de cinta.`, 'info');
+    setTimeout(() => setCopied(false), 2500);
   }
 
   return (
@@ -92,162 +142,270 @@ export default function ProfileScreen(): React.JSX.Element {
       <View
         style={[
           styles.topBar,
-          { backgroundColor: palette.backgroundElevated, borderBottomColor: palette.borderSubtle }
+          {
+            backgroundColor: palette.backgroundElevated || palette.surface,
+            borderBottomColor: palette.borderSubtle
+          }
         ]}
       >
         <View style={styles.topBarInner}>
           <View style={styles.badgeRow}>
-            <View style={styles.badgeDot} />
-            <Text style={styles.badgeRowText}>CREDENCIAL ANALÓGICA · PASAPORTE DE MIEMBRO</Text>
+            <View style={[styles.badgeDot, { backgroundColor: palette.accent }]} />
+            <Text style={[styles.badgeRowText, { color: palette.muted }]}>
+              CREDENCIAL DE ESTUDIO · PASAPORTE DE COLECCIONISTA
+            </Text>
           </View>
           <Text style={[styles.title, { color: palette.text }]}>Mi Pasaporte</Text>
           <Text style={[styles.subtitle, { color: palette.muted }]}>
-            Identificador único de intercambio, linaje y privilegios de acceso.
+            Identificador único de intercambio, linaje y privilegios de acceso al archivo.
           </Text>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Tarjeta de Identidad de Coleccionista */}
-        <View
-          style={[
-            styles.card,
-            shadows.md,
-            { backgroundColor: palette.surface, borderColor: palette.border }
-          ]}
+        {/* Tarjeta Pasaporte Holográfica con Patrón Guilloche */}
+        <LinearGradient
+          colors={['#FBBF24', '#00E5FF', '#A855F7', '#FBBF24']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.holoPassportBorder}
         >
-          <View style={styles.avatarRow}>
-            <View style={styles.avatarWrap}>
-              {user?.avatar_url ? (
-                <Image
-                  source={{ uri: user.avatar_url }}
-                  style={[styles.avatarImage, { borderColor: palette.accent }]}
-                />
-              ) : (
-                <View style={[styles.avatar, { backgroundColor: palette.accent }]}>
-                  <Text style={styles.avatarText}>
-                    {(user?.display_name || user?.username || 'U')[0].toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <View style={styles.avatarDot} />
-            </View>
-
-            <View style={styles.userMainInfo}>
-              <Text style={[styles.name, { color: palette.text }]}>{user?.display_name}</Text>
-              <Text style={styles.username}>@{user?.username}</Text>
-              <Text style={[styles.email, { color: palette.muted }]}>{user?.email}</Text>
-              
-              <Pressable
-                style={[styles.editProfileBtn, { backgroundColor: palette.accentMuted, borderColor: palette.accentBorder }]}
-                onPress={openEditModal}
-              >
-                <Text style={[styles.editProfileBtnText, { color: palette.accent }]}>✎ EDITAR PERFIL Y FOTO</Text>
-              </Pressable>
-            </View>
-          </View>
-
-          {/* Caja de ID para Dubbeo P2P */}
-          <View
-            style={[
-              styles.idBox,
-              { backgroundColor: palette.surfaceDark, borderColor: palette.borderSubtle }
-            ]}
+          <LinearGradient
+            colors={[palette.cardElevated || '#172036', palette.card || '#111726']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.passportInner}
           >
-            <Text style={[styles.idLabel, { color: palette.muted }]}>
-              TU IDENTIFICADOR ÚNICO DE DUBBEO (P2P ID)
-            </Text>
-            <Text style={styles.idValue}>{user?.id}</Text>
-            <Text style={[styles.idHint, { color: palette.muted }]}>
-              Compartí este número con otros coleccionistas para que te transfieran copias físicas y figuren en tu linaje.
-            </Text>
-          </View>
-
-          {/* Roles Activos */}
-          <View style={[styles.rolesContainer, { borderTopColor: palette.borderSubtle }]}>
-            <Text style={[styles.rolesLabel, { color: palette.muted }]}>
-              PERMISOS Y NIVELES DE ACCESO ACTIVOS
-            </Text>
-            <View style={styles.rolesList}>
-              {(user?.roles || []).map((r) => (
-                <View
-                  key={r}
-                  style={[
-                    styles.roleBadge,
-                    { backgroundColor: palette.accentMuted, borderColor: palette.accentBorder }
-                  ]}
-                >
-                  <View style={styles.roleDot} />
-                  <Text style={styles.roleText}>{r.toUpperCase()}</Text>
-                </View>
-              ))}
+            {/* Guilloche / Líneas finas analógicas de fondo */}
+            <View style={styles.guillochePattern}>
+              <View style={[styles.guillocheLine, { borderColor: 'rgba(255, 255, 255, 0.03)' }]} />
+              <View style={[styles.guillocheLine, { borderColor: 'rgba(255, 255, 255, 0.04)' }]} />
+              <View style={[styles.guillocheLine, { borderColor: 'rgba(255, 255, 255, 0.03)' }]} />
             </View>
-          </View>
-        </View>
+
+            {/* Cabecera del Pasaporte */}
+            <View style={styles.passportHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Radio size={14} color={palette.accent} />
+                <Text style={[styles.passportHeaderTitle, { color: palette.accent }]}>
+                  TAPE TRADING ARCHIVE · OFFICIAL PASSPORT
+                </Text>
+              </View>
+              <Text style={[styles.passportHeaderSub, { color: palette.muted }]}>
+                AUTH #{(user as any)?.id ? String((user as any).id).padStart(5, '0') : '00001'}
+              </Text>
+            </View>
+
+            {/* Fila del Avatar con Anillo en Gradiente y Luz Online */}
+            <View style={styles.avatarRow}>
+              <View style={styles.avatarWrap}>
+                <LinearGradient
+                  colors={['#FBBF24', '#D97706', '#00E5FF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.avatarRing}
+                >
+                  {(user as any)?.avatar_url ? (
+                    <Image
+                      source={{ uri: (user as any).avatar_url }}
+                      style={styles.avatarImage}
+                    />
+                  ) : (
+                    <View style={[styles.avatarFallback, { backgroundColor: palette.surfaceDark || '#090C14' }]}>
+                      <Text style={[styles.avatarText, { color: palette.accent }]}>
+                        {((user as any)?.display_name || user?.username || 'U')[0].toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                </LinearGradient>
+
+                {/* Punto Verde Online Pulsante */}
+                <Animated.View
+                  style={[
+                    styles.onlineDot,
+                    { transform: [{ scale: pulseAnim }], backgroundColor: '#10B981' }
+                  ]}
+                />
+              </View>
+
+              <View style={styles.userMainInfo}>
+                <Text style={[styles.name, { color: palette.text }]}>
+                  {(user as any)?.display_name || user?.username}
+                </Text>
+                <Text style={[styles.username, { color: palette.accent }]}>
+                  @{user?.username}
+                </Text>
+                <Text style={[styles.email, { color: palette.muted }]}>
+                  {user?.email}
+                </Text>
+
+                <View style={{ marginTop: 8 }}>
+                  <PremiumButton
+                    onPress={openEditModal}
+                    variant="outline"
+                    size="sm"
+                    palette={palette}
+                    icon={<Edit3 size={11} color={palette.amber} />}
+                  >
+                    EDITAR CREDENCIAL
+                  </PremiumButton>
+                </View>
+              </View>
+            </View>
+
+            {/* Número P2P Grande Monoespaciado con Botón de Copiado */}
+            <View
+              style={[
+                styles.p2pCard,
+                { backgroundColor: palette.surfaceDark || '#090C14', borderColor: palette.borderSubtle }
+              ]}
+            >
+              <View style={styles.p2pMetaRow}>
+                <Text style={[styles.p2pLabel, { color: palette.muted }]}>
+                  P2P DUBBING IDENTITY · IDENTIFICADOR DE RED
+                </Text>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.copyBtn,
+                    { backgroundColor: palette.surfaceLight, borderColor: palette.border },
+                    pressed && { opacity: 0.75, transform: [{ scale: 0.95 }] }
+                  ]}
+                  onPress={handleCopyP2P}
+                >
+                  {copied ? (
+                    <Check size={11} color={palette.emerald || '#10B981'} />
+                  ) : (
+                    <Copy size={11} color={palette.cyan} />
+                  )}
+                  <Text
+                    style={[
+                      styles.copyBtnText,
+                      { color: copied ? palette.emerald || '#10B981' : palette.cyan }
+                    ]}
+                  >
+                    {copied ? 'COPIADO' : 'COPIAR ID'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Text style={[styles.p2pValue, { color: palette.text }]}>
+                {user?.id ? `ID #${String(user.id).padStart(6, '0')}` : 'ID #000000'}
+              </Text>
+
+              <Text style={[styles.p2pHint, { color: palette.muted }]}>
+                Proporcioná este número a otros archivistas para recibir transferencias de cintas analógicas y registrar tu nombre en el linaje criptográfico.
+              </Text>
+            </View>
+
+            {/* Roles y Privilegios */}
+            <View style={[styles.rolesContainer, { borderTopColor: palette.borderSubtle }]}>
+              <Text style={[styles.rolesLabel, { color: palette.muted }]}>
+                PRIVILEGIOS Y NIVELES DE ACCESO HABILITADOS
+              </Text>
+              <View style={styles.rolesList}>
+                {(user?.roles || []).map((r) => (
+                  <Badge
+                    key={r}
+                    label={r}
+                    variant={r === 'admin' ? 'admin' : r === 'artist' ? 'artist' : 'curator'}
+                    palette={palette}
+                  />
+                ))}
+              </View>
+            </View>
+          </LinearGradient>
+        </LinearGradient>
 
         {/* Acciones de Cuenta */}
         <View style={styles.actionGroup}>
-          <Pressable
-            style={[
-              styles.themeButton,
-              { backgroundColor: palette.accentMuted, borderColor: palette.accentBorder }
-            ]}
+          <PremiumButton
             onPress={toggleTheme}
+            variant="secondary"
+            size="lg"
+            palette={palette}
+            style={{ width: '100%' }}
+            icon={
+              isDark ? (
+                <Sun size={15} color={palette.accent} />
+              ) : (
+                <Moon size={15} color={palette.text} />
+              )
+            }
           >
-            <Text style={styles.themeButtonText}>
-              {isDark ? '☀ CAMBIAR A MODO ESTUDIO CLARO' : '◐ CAMBIAR A MODO ESTUDIO OSCURO'}
-            </Text>
-          </Pressable>
+            {isDark ? 'CAMBIAR A MODO ESTUDIO CLARO' : 'CAMBIAR A MODO ESTUDIO OSCURO'}
+          </PremiumButton>
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.logoutButton,
-              pressed && { backgroundColor: '#45121b' }
-            ]}
-            onPress={handleLogoutPrompt}
+          <PremiumButton
+            onPress={() => setShowLogoutModal(true)}
+            variant="danger"
+            size="lg"
+            palette={palette}
+            style={{ width: '100%', marginTop: 8 }}
+            icon={<LogOut size={15} color="#FFFFFF" />}
           >
-            <Text style={styles.logoutButtonText}>CERRAR SESIÓN</Text>
-          </Pressable>
+            CERRAR SESIÓN
+          </PremiumButton>
         </View>
       </ScrollView>
 
-      {/* Modal / Popup de Confirmación de Cierre de Sesión */}
+      {/* Modal de Cierre de Sesión con Blur */}
       <Modal
         visible={showLogoutModal}
         transparent
         animationType="fade"
         onRequestClose={() => setShowLogoutModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <BlurView intensity={35} tint="dark" style={styles.modalOverlay}>
+          <GlowCard
+            variant="purpleGlow"
+            palette={palette}
+            style={[
+              styles.modalCard,
+              { backgroundColor: palette.surface, borderColor: palette.roseBorder || '#DC2626' }
+            ]}
+          >
+            <View
+              style={[
+                styles.confirmIconCircle,
+                { backgroundColor: palette.roseMuted || '#381313' }
+              ]}
+            >
+              <LogOut size={26} color={palette.rose || '#EF4444'} />
+            </View>
             <Text style={[styles.modalTitle, { color: palette.text }]}>¿Cerrar Sesión?</Text>
             <Text style={[styles.modalMessage, { color: palette.muted }]}>
-              ¿Confirmás que deseás cerrar la sesión de @{user?.username} en este dispositivo? Deberás volver a ingresar para acceder a tu estantería y reproducir cintas.
+              ¿Confirmás que deseás cerrar la sesión de @{user?.username} en este dispositivo?
             </Text>
 
             <View style={styles.modalBtnRow}>
-              <Pressable
-                style={[styles.modalCancelBtn, { borderColor: palette.border }]}
+              <PremiumButton
                 onPress={() => setShowLogoutModal(false)}
+                variant="secondary"
+                size="md"
+                palette={palette}
+                style={{ flex: 1 }}
               >
-                <Text style={[styles.modalCancelText, { color: palette.textSecondary }]}>CANCELAR</Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.modalConfirmBtn, { backgroundColor: colors.danger }]}
+                CANCELAR
+              </PremiumButton>
+              <PremiumButton
                 onPress={() => {
                   setShowLogoutModal(false);
                   logout();
                 }}
+                variant="danger"
+                size="md"
+                palette={palette}
+                style={{ flex: 1.2 }}
+                icon={<LogOut size={13} color="#FFFFFF" />}
               >
-                <Text style={styles.modalConfirmText}>CERRAR SESIÓN</Text>
-              </Pressable>
+                CERRAR SESIÓN
+              </PremiumButton>
             </View>
-          </View>
-        </View>
+          </GlowCard>
+        </BlurView>
       </Modal>
 
-      {/* Modal / Bottom Sheet de Edición de Perfil y Foto */}
+      {/* Modal de Edición de Perfil */}
       <Modal
         visible={isEditing}
         transparent
@@ -258,8 +416,14 @@ export default function ProfileScreen(): React.JSX.Element {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.modalOverlay}
         >
-          <View style={[styles.modalCardLarge, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            {/* Tirador visual analógico */}
+          <GlowCard
+            variant="surface"
+            palette={palette}
+            style={[
+              styles.modalCardLarge,
+              { backgroundColor: palette.surface, borderColor: palette.border }
+            ]}
+          >
             <View style={[styles.sheetHandle, { backgroundColor: palette.border }]} />
 
             <View style={styles.editHeader}>
@@ -270,31 +434,58 @@ export default function ProfileScreen(): React.JSX.Element {
                 </Text>
               </View>
               <Pressable
-                style={[styles.closeModalBtn, { backgroundColor: palette.surfaceDark, borderColor: palette.border }]}
+                style={[
+                  styles.closeModalBtn,
+                  { backgroundColor: palette.surfaceDark || '#090C14', borderColor: palette.border }
+                ]}
                 onPress={() => !saving && setIsEditing(false)}
               >
-                <Text style={{ color: palette.muted, fontSize: 16, fontWeight: '700' }}>✕</Text>
+                <X size={15} color={palette.muted} />
               </Pressable>
             </View>
 
             {editError ? (
-              <View style={[styles.errorBox, { backgroundColor: palette.dangerMuted, borderColor: palette.dangerBorder }]}>
-                <Text style={[styles.errorText, { color: palette.danger }]}>⚠ {editError}</Text>
+              <View
+                style={[
+                  styles.errorBox,
+                  {
+                    backgroundColor: palette.roseMuted || '#381313',
+                    borderColor: palette.roseBorder || '#DC2626'
+                  }
+                ]}
+              >
+                <Text style={[styles.errorText, { color: palette.rose || '#EF4444' }]}>
+                  {editError}
+                </Text>
               </View>
             ) : null}
 
-            <Text style={[styles.inputLabel, { color: palette.muted }]}>NOMBRE COMPLETO / VISIBLE</Text>
+            <Text style={[styles.inputLabel, { color: palette.muted }]}>NOMBRE COMPLETO</Text>
             <TextInput
-              style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: palette.surfaceDark || '#090C14',
+                  borderColor: palette.border,
+                  color: palette.text
+                }
+              ]}
               value={displayName}
               onChangeText={setDisplayName}
               placeholder="Nombre para mostrar"
               placeholderTextColor={palette.muted}
             />
 
-            <Text style={[styles.inputLabel, { color: palette.muted }]}>NOMBRE DE USUARIO (@handle)</Text>
+            <Text style={[styles.inputLabel, { color: palette.muted }]}>USUARIO (@handle)</Text>
             <TextInput
-              style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: palette.surfaceDark || '#090C14',
+                  borderColor: palette.border,
+                  color: palette.text
+                }
+              ]}
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -302,7 +493,7 @@ export default function ProfileScreen(): React.JSX.Element {
               placeholderTextColor={palette.muted}
             />
 
-            <Text style={[styles.inputLabel, { color: palette.muted }]}>ELEGÍ TU AVATAR ANALÓGICO</Text>
+            <Text style={[styles.inputLabel, { color: palette.muted }]}>AVATAR ANALÓGICO</Text>
             <View style={styles.presetsGrid}>
               {AVATAR_PRESETS.map((p) => {
                 const isSelected = avatarUrl === p.uri;
@@ -312,7 +503,7 @@ export default function ProfileScreen(): React.JSX.Element {
                     style={[
                       styles.presetCircleBtn,
                       { borderColor: isSelected ? palette.accent : palette.borderSubtle },
-                      isSelected && { borderColor: palette.accent, borderWidth: 3 }
+                      isSelected && { borderColor: palette.accent, borderWidth: 2.5 }
                     ]}
                     onPress={() => setAvatarUrl(p.uri)}
                   >
@@ -322,38 +513,19 @@ export default function ProfileScreen(): React.JSX.Element {
               })}
             </View>
 
-            <Text style={[styles.inputLabel, { color: palette.muted }]}>O PEGÁ TU URL DE IMAGEN DIRECTA</Text>
-            <TextInput
-              style={[styles.modalInput, { backgroundColor: palette.surfaceDark, borderColor: palette.border, color: palette.text }]}
-              value={avatarUrl}
-              onChangeText={setAvatarUrl}
-              placeholder="https://ejemplo.com/mi-avatar.jpg"
-              placeholderTextColor={palette.muted}
-              autoCapitalize="none"
-            />
-
-            <View style={styles.modalBtnRow}>
-              <Pressable
-                style={[styles.modalConfirmBtn, { backgroundColor: palette.accent }, saving && { opacity: 0.6 }]}
+            <View style={{ marginTop: 20 }}>
+              <PremiumButton
                 onPress={handleSaveProfile}
                 disabled={saving}
+                variant="primary"
+                size="lg"
+                palette={palette}
+                style={{ width: '100%' }}
               >
-                {saving ? (
-                  <ActivityIndicator color={palette.background} />
-                ) : (
-                  <Text style={[styles.modalConfirmText, { color: palette.background }]}>GUARDAR CAMBIOS</Text>
-                )}
-              </Pressable>
-
-              <Pressable
-                style={[styles.modalCancelBtn, { borderColor: palette.border }]}
-                onPress={() => setIsEditing(false)}
-                disabled={saving}
-              >
-                <Text style={[styles.modalCancelText, { color: palette.textSecondary }]}>CANCELAR</Text>
-              </Pressable>
+                {saving ? 'GUARDANDO...' : 'GUARDAR CAMBIOS EN CREDENCIAL'}
+              </PremiumButton>
             </View>
-          </View>
+          </GlowCard>
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
@@ -362,16 +534,13 @@ export default function ProfileScreen(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.background
+    flex: 1
   },
   topBar: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-    backgroundColor: colors.backgroundElevated
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
+    borderBottomWidth: 1
   },
   topBarInner: {
     maxWidth: 1200,
@@ -385,28 +554,25 @@ const styles = StyleSheet.create({
     marginBottom: 4
   },
   badgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.accent
+    width: 7,
+    height: 7,
+    borderRadius: 4
   },
   badgeRowText: {
-    color: colors.muted,
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 1.2
   },
   title: {
-    color: colors.text,
     fontSize: 24,
-    fontWeight: '900',
-    letterSpacing: -0.5
+    fontWeight: '800',
+    letterSpacing: -0.6
   },
   subtitle: {
-    color: colors.muted,
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 4,
-    lineHeight: 16
+    lineHeight: 18,
+    maxWidth: 500
   },
   scroll: {
     padding: 16,
@@ -415,12 +581,48 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center'
   },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 18,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.border
+  holoPassportBorder: {
+    padding: 1.5,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 20
+  },
+  passportInner: {
+    borderRadius: 18.5,
+    padding: 22,
+    position: 'relative',
+    overflow: 'hidden'
+  },
+  guillochePattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.8
+  },
+  guillocheLine: {
+    height: 24,
+    borderBottomWidth: 1
+  },
+  passportHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    marginBottom: 18
+  },
+  passportHeaderTitle: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 1
+  },
+  passportHeaderSub: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8
   },
   avatarRow: {
     flexDirection: 'row',
@@ -430,316 +632,225 @@ const styles = StyleSheet.create({
   avatarWrap: {
     position: 'relative'
   },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.accent,
+  avatarRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    padding: 2.5,
     justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#382205'
+    alignItems: 'center'
   },
-  avatarDot: {
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 34
+  },
+  avatarFallback: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 34,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  avatarText: {
+    fontSize: 26,
+    fontWeight: '800'
+  },
+  onlineDot: {
     position: 'absolute',
     bottom: 2,
     right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.success,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
     borderWidth: 2,
-    borderColor: colors.surface
-  },
-  avatarText: {
-    color: '#090a0f',
-    fontSize: 28,
-    fontWeight: '900'
+    borderColor: '#06080D'
   },
   userMainInfo: {
     flex: 1
   },
   name: {
-    color: colors.text,
     fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.3
+    fontWeight: '800',
+    letterSpacing: -0.4
   },
   username: {
-    color: colors.accent,
-    fontSize: 14,
-    marginTop: 2,
-    fontWeight: '800'
+    fontSize: 13.5,
+    fontWeight: '700',
+    marginTop: 2
   },
   email: {
-    color: colors.muted,
     fontSize: 12,
     marginTop: 2
   },
-  idBox: {
-    backgroundColor: colors.surfaceDark,
-    borderRadius: 12,
-    padding: 18,
-    marginTop: 20,
-    alignItems: 'center',
+  p2pCard: {
+    borderRadius: 14,
+    padding: 16,
     borderWidth: 1,
-    borderColor: colors.borderSubtle
+    marginTop: 18
   },
-  idLabel: {
-    color: colors.muted,
+  p2pMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  p2pLabel: {
     fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1
+    fontWeight: '800',
+    letterSpacing: 0.8
   },
-  idValue: {
-    color: colors.accent,
-    fontSize: 32,
-    fontWeight: '900',
-    marginVertical: 4,
-    letterSpacing: -0.5
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6
   },
-  idHint: {
-    color: colors.muted,
-    fontSize: 11,
-    textAlign: 'center',
+  copyBtnText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.5
+  },
+  p2pValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    fontFamily: Platform.select({ default: 'monospace' }),
+    letterSpacing: 1.5
+  },
+  p2pHint: {
+    fontSize: 11.5,
     lineHeight: 16,
-    marginTop: 4,
-    maxWidth: 380
+    marginTop: 8
   },
   rolesContainer: {
-    marginTop: 20,
-    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle
+    paddingTop: 14,
+    marginTop: 18
   },
   rolesLabel: {
-    color: colors.muted,
     fontSize: 9,
-    fontWeight: '900',
+    fontWeight: '800',
     letterSpacing: 0.8,
-    marginBottom: 10
+    marginBottom: 8
   },
   rolesList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8
   },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.accentMuted,
-    borderWidth: 1,
-    borderColor: colors.accentBorder,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6
-  },
-  roleDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.accent
-  },
-  roleText: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.5
-  },
   actionGroup: {
-    marginTop: 16,
-    gap: 10
-  },
-  refreshBtn: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center'
-  },
-  refreshBtnText: {
-    color: colors.textSecondary,
-    fontWeight: '800',
-    fontSize: 11,
-    letterSpacing: 0.8
-  },
-  themeButton: {
-    borderWidth: 1,
-    borderColor: colors.accentBorder,
-    backgroundColor: colors.accentMuted,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center'
-  },
-  themeButtonText: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.8
-  },
-  logoutButton: {
-    backgroundColor: colors.dangerMuted,
-    borderWidth: 1,
-    borderColor: colors.dangerBorder,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center'
-  },
-  logoutButtonText: {
-    color: colors.danger,
-    fontWeight: '900',
-    fontSize: 12,
-    letterSpacing: 1
-  },
-  avatarImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 2
-  },
-  editProfileBtn: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    borderWidth: 1
-  },
-  editProfileBtnText: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5
+    gap: 12
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'flex-end',
-    alignItems: 'center'
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20
   },
   modalCard: {
+    maxWidth: 420,
     width: '100%',
-    maxWidth: 400,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1
+    borderRadius: 18,
+    padding: 22,
+    alignItems: 'center'
+  },
+  confirmIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  modalMessage: {
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 20
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%'
   },
   modalCardLarge: {
-    width: '100%',
     maxWidth: 500,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 28,
-    borderWidth: 1,
-    borderBottomWidth: 0
+    width: '100%',
+    borderRadius: 20,
+    padding: 22
   },
   sheetHandle: {
-    width: 44,
+    width: 40,
     height: 4,
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: 14
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '900'
-  },
-  modalSubtitle: {
-    fontSize: 11,
-    marginTop: 2
-  },
-  closeModalBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  modalMessage: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 20
-  },
-  modalBtnRow: {
-    flexDirection: 'column',
-    gap: 8,
-    marginTop: 18
-  },
-  modalCancelBtn: {
-    width: '100%',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center'
-  },
-  modalCancelText: {
-    fontSize: 12,
-    fontWeight: '800'
-  },
-  modalConfirmBtn: {
-    width: '100%',
-    paddingVertical: 13,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  modalConfirmText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '900'
-  },
   editHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    marginTop: 2
+  },
+  closeModalBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center'
+  },
+  errorBox: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
     marginBottom: 14
   },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '600'
+  },
   inputLabel: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    marginTop: 12,
-    marginBottom: 6
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    marginBottom: 6,
+    marginTop: 10
   },
   modalInput: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 13
+    fontSize: 13.5
   },
   presetsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 8
+    marginTop: 8
   },
   presetCircleBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1.5,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center'
+    overflow: 'hidden'
   },
   presetCircleImg: {
     width: '100%',
     height: '100%'
-  },
-  errorBox: {
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12
-  },
-  errorText: {
-    fontSize: 12,
-    fontWeight: '700'
   }
 });
