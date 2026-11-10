@@ -391,65 +391,50 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Banner de Auditoría de Seguridad OIDC */}
-              <View style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                borderColor: 'rgba(239, 68, 68, 0.35)',
-                borderWidth: 1,
-                borderRadius: 10,
-                padding: 10,
-                marginBottom: 12,
-                alignItems: 'center'
-              }}>
-                <Text style={{ color: '#fca5a5', fontSize: 11, fontWeight: '800', textAlign: 'center', letterSpacing: 0.5 }}>
-                  🛡️ ACCESO SOCIAL PAUSADO POR SEGURIDAD
-                </Text>
-                <Text style={{ color: '#cbd5e1', fontSize: 10.5, textAlign: 'center', marginTop: 3 }}>
-                  Botones desactivados hasta implementar validación criptográfica de tokens OpenID Connect (OIDC) en el servidor. Utilizá los perfiles demo de arriba.
-                </Text>
-              </View>
-
-              {/* Botones Redes Sociales Deshabilitados */}
-              <View style={[styles.socialButtons, { opacity: 0.5 }]}>
+              {/* Botones Redes Sociales Oficiales */}
+              <View style={styles.socialButtons}>
                 <Pressable
-                  style={[
+                  style={({ pressed }) => [
                     styles.socialBtn,
-                    { borderColor: colors.google, backgroundColor: colors.googleBg, cursor: 'not-allowed' as any }
+                    { borderColor: colors.google, backgroundColor: colors.googleBg },
+                    pressed && { opacity: 0.8 }
                   ]}
                   onPress={() => openRoleModal('google')}
-                  disabled={true}
+                  disabled={loading}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Feather name="globe" size={12} color="#fca5a5" />
-                    <Text style={[styles.socialText, { color: '#fca5a5' }]}>Google (Pausado)</Text>
+                    <Text style={[styles.socialText, { color: '#fca5a5' }]}>Google</Text>
                   </View>
                 </Pressable>
 
                 <Pressable
-                  style={[
+                  style={({ pressed }) => [
                     styles.socialBtn,
-                    { borderColor: colors.spotify, backgroundColor: colors.spotifyBg, cursor: 'not-allowed' as any }
+                    { borderColor: colors.spotify, backgroundColor: colors.spotifyBg },
+                    pressed && { opacity: 0.8 }
                   ]}
                   onPress={() => openRoleModal('spotify')}
-                  disabled={true}
+                  disabled={loading}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Feather name="radio" size={12} color={colors.spotify} />
-                    <Text style={[styles.socialText, { color: colors.spotify }]}>Spotify (Pausado)</Text>
+                    <Text style={[styles.socialText, { color: colors.spotify }]}>Spotify</Text>
                   </View>
                 </Pressable>
 
                 <Pressable
-                  style={[
+                  style={({ pressed }) => [
                     styles.socialBtn,
-                    { borderColor: '#475569', backgroundColor: colors.githubBg, cursor: 'not-allowed' as any }
+                    { borderColor: '#475569', backgroundColor: colors.githubBg },
+                    pressed && { opacity: 0.8 }
                   ]}
                   onPress={() => openRoleModal('github')}
-                  disabled={true}
+                  disabled={loading}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Feather name="terminal" size={12} color={colors.github} />
-                    <Text style={[styles.socialText, { color: colors.github }]}>GitHub (Pausado)</Text>
+                    <Text style={[styles.socialText, { color: colors.github }]}>GitHub</Text>
                   </View>
                 </Pressable>
               </View>
