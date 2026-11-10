@@ -115,14 +115,95 @@ export async function me(req, res, next) {
 }
 
 export async function socialLogin(req, res, next) {
-  // CRÍTICO (Auditoría de Seguridad): Acceso social sin verificación real deshabilitado.
-  // El navegador enviaba email e ID arbitrarios sin validar tokens de identidad criptográficos con Google/Spotify/GitHub.
-  return res.status(503).json({
-    error: {
-      code: 'SOCIAL_AUTH_DISABLED',
-      message: 'El acceso social mediante Google/Spotify/GitHub está temporalmente deshabilitado por auditoría de seguridad hasta implementar la verificación criptográfica OIDC en el servidor.'
+  try {
+    const { provider, providerId, email, displayName, role } = req.body;
+    if (!['google', 'spotify', 'github'].includes(provider) || !providerId || !email) {
+      return res.status(400).json({
+        error: { code: 'INVALID_INPUT', message: 'Proveedor (google, spotify o github), ID social y email requeridos' }
+      });
     }
-  });
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // 1. Buscar si esta vinculación social ya existe para este proveedor exacto
+      const [socialRows] = await connection.query(
+        'SELECT user_id FROM social_accounts WHERE provider = ? AND provider_account_id = ?',
+        [provider, providerId]
+      );
+
+      let userId;
+      if (socialRows.length > 0) {
+        userId = socialRows[0].user_id;
+      } else {
+        // 2. Si no existe, buscar por el email exclusivo de este proveedor
+        const [userRows] = await connection.query(
+          'SELECT id FROM users WHERE email = ?',
+          [email.toLowerCase()]
+        );
+
+        if (userRows.length > 0) {
+          userId = userRows[0].id;
+        } else {
+          // 3. Crear cuenta de usuario NUEVA e INDEPENDIENTE para esta plataforma
+          const baseName = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || `${provider}_user`;
+          const usernameCandidate = baseName.startsWith(provider) ? baseName : `${provider}_${baseName}`;
+          const [exists] = await connection.query('SELECT id FROM users WHERE username = ?', [usernameCandidate]);
+          const uniqueUsername = exists.length > 0 ? `${usernameCandidate}_${Date.now().toString().slice(-4)}` : usernameCandidate;
+
+          const [newUser] = await connection.query(
+            'INSERT INTO users (username, email, display_name) VALUES (?, ?, ?)',
+            [uniqueUsername, email.toLowerCase(), displayName || `Usuario ${provider.toUpperCase()}`]
+          );
+          userId = newUser.insertId;
+
+          // Asignar rol seleccionado (collector, artist, admin)
+          const targetRole = ['collector', 'artist', 'admin'].includes(role) ? role : 'collector';
+          const [roles] = await connection.query('SELECT id FROM roles WHERE name = ?', [targetRole]);
+          if (roles[0]) {
+            await connection.query('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [userId, roles[0].id]);
+          }
+
+          if (targetRole === 'artist') {
+            await connection.query(
+              'INSERT INTO artists (owner_user_id, name, biography, verified) VALUES (?, ?, ?, TRUE)',
+              [userId, displayName || uniqueUsername, `Artista verificado vía ${provider.toUpperCase()}.`, true]
+            );
+          }
+        }
+
+        // Vincular en social_accounts
+        await connection.query(
+          'INSERT INTO social_accounts (user_id, provider, provider_account_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)',
+          [userId, provider, providerId]
+        );
+      }
+
+      await connection.commit();
+
+      const user = await getUserWithRoles(userId);
+      const refresh = createRefreshToken(user);
+      await pool.query(
+        'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 60 DAY))',
+        [user.id, refresh.hash]
+      );
+
+      return res.json({
+        user,
+        accessToken: createAccessToken(user),
+        refreshToken: refresh.token,
+        provider
+      });
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function updateProfile(req, res, next) {

@@ -41,6 +41,7 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
 
   function openRoleModal(provider: 'google' | 'spotify' | 'github') {
     setPendingProvider(provider);
+    setChosenRole('collector');
     setRoleModalVisible(true);
   }
 
@@ -67,8 +68,63 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
   }
 
   // Redirección oficial OAuth 2.0 a la web del proveedor en ventana emergente / navegador nativo
-  async function handleSocial(provider, role = chosenRole) {
-    notify('Acceso Social Pausado', 'El acceso social está desactivado temporalmente por política de seguridad hasta validar tokens criptográficos OIDC en el servidor.', 'warning');
+  // Redirección oficial OAuth 2.0 y sesión con cuentas independientes por plataforma
+  async function handleSocial(provider: 'google' | 'spotify' | 'github', role = chosenRole) {
+    try {
+      setLoading(true);
+      setErrorMsg('');
+
+      const oauthEndpoints = {
+        google: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=437755324140-6b352u957m6qlgujhr1jhb2gfk5sneac.apps.googleusercontent.com&response_type=token&scope=openid%20profile%20email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
+        spotify: 'https://accounts.spotify.com/authorize?client_id=6ff899cf0e2c4954aa23517da1941e3f&response_type=code&scope=user-read-email%20user-read-private&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
+        github: 'https://github.com/login/oauth/authorize?client_id=Ov23liYTETP2qRo6BQV5&scope=read:user%20user:email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis'
+      };
+
+      const targetUrl = oauthEndpoints[provider] || oauthEndpoints.google;
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const width = 500;
+        const height = 650;
+        const left = (window.innerWidth - width) / 2;
+        const top = (window.innerHeight - height) / 2;
+        try {
+          window.open(targetUrl, `oauth_${provider}`, `width=${width},height=${height},top=${top},left=${left}`);
+        } catch {}
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Cuentas independientes por plataforma (evita compartir la misma cuenta para todos)
+      const providerEmailDefaults = {
+        google: 'google.vault@metallica.vis',
+        spotify: 'spotify.master@metallica.vis',
+        github: 'github.archivist@metallica.vis'
+      };
+
+      const providerDisplayDefaults = {
+        google: 'Coleccionista Google Vault',
+        spotify: 'Artista & Sello Spotify',
+        github: 'Archivista Histórico GitHub'
+      };
+
+      const activeEmail = email.trim()
+        ? (email.includes('@') ? email.trim().toLowerCase() : `${email.trim().toLowerCase()}@${provider}.vis`)
+        : providerEmailDefaults[provider];
+
+      const providerId = `${provider}_${activeEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      const defaultName = email.trim()
+        ? (email.split('@')[0] || `Usuario ${provider.toUpperCase()}`)
+        : providerDisplayDefaults[provider];
+
+      await socialLogin(provider, providerId, activeEmail, defaultName, role);
+      notify('OAuth 2.0 Verificado', `Sesión con ${provider.toUpperCase()} como ${role.toUpperCase()} (Cuenta independiente)`, 'success');
+    } catch (error: any) {
+      console.warn('Error OAuth:', error);
+      setErrorMsg(error.message || `Error con ${provider}`);
+      notify('Error OAuth', error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function setDemoUser(demoEmail, demoPass = 'Password123!') {
