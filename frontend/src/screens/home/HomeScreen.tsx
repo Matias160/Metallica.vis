@@ -293,11 +293,11 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                 text="metallica.vis"
                 color={palette.accent}
                 glowColor={palette.borderGlowAmber}
-                style={{ fontSize: isScrolled ? 16 : 21, fontWeight: '800' }}
+                style={{ fontSize: isDesktop ? (isScrolled ? 16 : 21) : (isScrolled ? 14 : 17), fontWeight: '800' }}
               />
-              <View
-                style={[
-                  styles.badgeRow,
+              {isDesktop && (
+                <View
+                  style={[
                   Platform.OS === 'web' && ({
                     opacity: isScrolled ? 0 : 1,
                     maxWidth: isScrolled ? 0 : 220,
@@ -314,7 +314,8 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                   style={styles.badgeRowText}
                 />
               </View>
-            </View>
+            )}
+          </View>
 
             <View style={styles.headerRightActions}>
               {/* Botón QR */}
@@ -377,6 +378,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
           <View
             style={[
               styles.titleCol,
+              (!isDesktop && isScrolled) && { height: 0, opacity: 0, overflow: 'hidden', marginTop: 0, marginBottom: 0 },
               Platform.OS === 'web' && ({
                 maxHeight: isScrolled ? 0 : 120,
                 opacity: isScrolled ? 0 : 1,
@@ -549,7 +551,7 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
           ref={listRef}
           data={filteredTracks}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={[styles.listContent, isDesktop && { paddingBottom: 100 }]}
+          contentContainerStyle={[styles.listContent, { paddingBottom: 110 }]}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
@@ -867,10 +869,10 @@ const styles = StyleSheet.create({
   headerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     borderWidth: 1,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderRadius: 8
   },
   headerBtnText: {
@@ -880,8 +882,8 @@ const styles = StyleSheet.create({
   },
   badgeCount: {
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center'

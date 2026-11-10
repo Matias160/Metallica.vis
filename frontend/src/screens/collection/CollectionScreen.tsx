@@ -1223,19 +1223,31 @@ export default function CollectionScreen(): React.JSX.Element {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: palette.background, borderColor: palette.border, maxHeight: '85%' }]}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={[styles.modalTitle, { color: palette.text }]}>📜 Historial de Acciones</Text>
-                <Text style={[styles.modalDesc, { color: palette.muted }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={[styles.modalTitle, { color: palette.text, fontSize: 18, fontWeight: '800' }]}>📜 Historial de Acciones</Text>
+                <Text style={[styles.modalDesc, { color: palette.muted, fontSize: 12, marginTop: 3 }]}>
                   Registro de dubbeos, adquisiciones y sellos. Podés triturar cualquier ticket archivado.
                 </Text>
               </View>
-              <Pressable onPress={() => setHistoryModalVisible(false)} style={styles.modalCloseBtn}>
-                <Feather name="x" size={18} color={palette.text} />
+              <Pressable
+                onPress={() => setHistoryModalVisible(false)}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: palette.surfaceLight,
+                  borderColor: palette.border,
+                  borderWidth: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Feather name="x" size={16} color={palette.text} />
               </Pressable>
             </View>
 
-            <ScrollView style={{ marginTop: 12 }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ marginTop: 8 }} contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
               {actionLogs.length === 0 ? (
                 <View style={{ padding: 24, alignItems: 'center' }}>
                   <Text style={{ color: palette.muted, fontSize: 14 }}>No hay más comprobantes en la bandeja.</Text>

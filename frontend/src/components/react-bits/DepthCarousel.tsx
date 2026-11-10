@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  useWindowDimensions,
   StyleSheet,
   Pressable,
   Platform,
@@ -56,8 +57,10 @@ export const DepthCarousel: React.FC<DepthCarouselProps> = ({
     setActiveIndex((prev) => (prev - 1 + items.length) % items.length);
   };
 
-  const cardWidth = 480;
-  const cardHeight = 190;
+  const { width: windowWidth } = useWindowDimensions();
+  const isDesktop = windowWidth >= 768;
+  const cardWidth = Math.min(windowWidth - 36, 480);
+  const cardHeight = isDesktop ? 190 : 172;
   const current = items[activeIndex];
 
   return (
@@ -95,13 +98,11 @@ export const DepthCarousel: React.FC<DepthCarouselProps> = ({
                 {
                   zIndex,
                   opacity,
-                  width: '92%',
-                  maxWidth: cardWidth,
+                  width: cardWidth,
                   height: cardHeight,
                   transform: [
                     { perspective: 1000 },
-                    { translateX: -Math.min(cardWidth, 480) / 2 },
-                    { translateY: -cardHeight / 2 + translateY },
+                    { translateY: translateY },
                     { scale }
                   ]
                 },
@@ -227,11 +228,7 @@ const styles = StyleSheet.create({
   },
   depthCard: {
     position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: '92%',
-    maxWidth: 520,
-    height: 190,
+    alignSelf: 'center',
     borderRadius: 16,
     overflow: 'hidden',
     ...Platform.select({

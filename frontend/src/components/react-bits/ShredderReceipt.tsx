@@ -1,6 +1,6 @@
 // ShredderReceipt: Ticket de transacción con bordes dentados y efecto trituradora de recibo (React Bits)
 // https://reactbits.dev/micro/shredder
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -80,7 +80,7 @@ export const ShredderReceipt: React.FC<ShredderReceiptProps> = ({
       <View style={[styles.receiptBody, { backgroundColor: palette.card || '#111726', borderColor: palette.border }]}>
         {/* Cabecera del ticket */}
         <View style={styles.receiptHeader}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
             <View style={[styles.typeBadge, { backgroundColor: typeColor }]}>
               <Text style={styles.typeBadgeText}>{log.type}</Text>
             </View>
@@ -89,7 +89,7 @@ export const ShredderReceipt: React.FC<ShredderReceiptProps> = ({
             </Text>
           </View>
 
-          <Text style={[styles.timestamp, { color: palette.muted }]}>
+          <Text numberOfLines={1} style={[styles.timestamp, { color: palette.muted, flexShrink: 1, textAlign: 'right' }]}>
             {log.timestamp}
           </Text>
         </View>
@@ -113,7 +113,7 @@ export const ShredderReceipt: React.FC<ShredderReceiptProps> = ({
 
         {/* Botón de triturar comprobante con efecto Shredder */}
         <View style={[styles.receiptFooter, { borderTopColor: palette.borderSubtle }]}>
-          <Text style={[styles.verifiedLabel, { color: palette.emerald || '#10B981' }]}>
+          <Text numberOfLines={1} style={[styles.verifiedLabel, { color: palette.emerald || '#10B981', flex: 1, marginRight: 6 }]}>
             ✓ REGISTRO EN BODEGA VÁLIDO
           </Text>
 

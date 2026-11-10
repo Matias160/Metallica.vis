@@ -114,8 +114,7 @@ export const CircularCarousel: React.FC<CircularCarouselProps> = ({
                   height: cardHeight,
                   transform: [
                     { perspective: 1000 },
-                    { translateX: -cardWidth / 2 + offset * sideOffset },
-                    { translateY: -cardHeight / 2 },
+                    { translateX: offset * sideOffset },
                     { rotateY: `${angle}deg` },
                     { scale }
                   ]
@@ -265,8 +264,7 @@ const styles = StyleSheet.create({
   },
   carouselCard: {
     position: 'absolute',
-    left: '50%',
-    top: '50%',
+    alignSelf: 'center',
     borderRadius: 16,
     overflow: 'hidden',
     ...Platform.select({
