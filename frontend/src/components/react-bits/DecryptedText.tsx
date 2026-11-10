@@ -1,6 +1,7 @@
 // DecryptedText: Texto desencriptado con ciclo de caracteres estilo consola / matriz analógica (React Bits)
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, TextStyle, StyleSheet, StyleProp } from 'react-native';
+import { useReducedMotion } from './useReducedMotion';
 
 interface DecryptedTextProps {
   text: string;
@@ -22,12 +23,10 @@ export const DecryptedText: React.FC<DecryptedTextProps> = ({
   animateOnMount = true
 }) => {
   const [displayText, setDisplayText] = useState<string>(animateOnMount ? '' : text);
-  const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const iterationRef = useRef<number>(0);
+  const reducedMotion = useReducedMotion();
 
   const startAnimation = () => {
     let iteration = 0;
-    setIsAnimating(true);
 
     const interval = setInterval(() => {
       setDisplayText(
@@ -48,7 +47,6 @@ export const DecryptedText: React.FC<DecryptedTextProps> = ({
       if (iteration >= text.length) {
         clearInterval(interval);
         setDisplayText(text);
-        setIsAnimating(false);
       }
     }, speed);
 
@@ -56,16 +54,16 @@ export const DecryptedText: React.FC<DecryptedTextProps> = ({
   };
 
   useEffect(() => {
-    if (animateOnMount) {
+    if (animateOnMount && !reducedMotion) {
       const cleanup = startAnimation();
       return cleanup;
     } else {
       setDisplayText(text);
     }
-  }, [text]);
+  }, [text, animateOnMount, reducedMotion, speed, maxIterations, characters]);
 
   return (
-    <Text style={[styles.text, style]}>
+    <Text accessibilityLabel={text} style={[styles.text, style]}>
       {displayText || text}
     </Text>
   );

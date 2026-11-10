@@ -1,7 +1,8 @@
 // TechText: Texto animado estilo terminal cyberpunk / glitch técnico de React Bits
 // https://reactbits.dev/text-animations/tech-text
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Text, TextStyle, StyleSheet, StyleProp, Platform } from 'react-native';
+import { useReducedMotion } from './useReducedMotion';
 
 interface TechTextProps {
   text: string;
@@ -24,53 +25,49 @@ export const TechText: React.FC<TechTextProps> = ({
 }) => {
   const [displayText, setDisplayText] = useState(text);
   const [isGlitching, setIsGlitching] = useState(false);
-  const timerRef = useRef<any>(null);
-
-  const runGlitch = () => {
-    setIsGlitching(true);
-    let step = 0;
-    const maxSteps = 10;
-
-    const interval = setInterval(() => {
-      step++;
-      const glitched = text
-        .split('')
-        .map((char, i) => {
-          if (char === ' ' || char === '.') return char;
-          // Glitch aleatorio en un 30% de los caracteres
-          if (Math.random() < 0.35 && step < maxSteps - 2) {
-            return TECH_SYMBOLS[Math.floor(Math.random() * TECH_SYMBOLS.length)];
-          }
-          return char;
-        })
-        .join('');
-
-      setDisplayText(glitched);
-
-      if (step >= maxSteps) {
-        clearInterval(interval);
-        setDisplayText(text);
-        setIsGlitching(false);
-      }
-    }, speed);
-  };
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    // Glitch inicial al montar
+    setDisplayText(text);
+    setIsGlitching(false);
+    if (reducedMotion) return;
+    let frameTimer: ReturnType<typeof setInterval> | undefined;
+    let running = false;
+    const runGlitch = () => {
+      if (running) return;
+      running = true;
+      setIsGlitching(true);
+      let step = 0;
+      frameTimer = setInterval(() => {
+        step += 1;
+        const glitched = text.split('').map((char) => {
+          if (char === ' ' || char === '.' || step >= 8) return char;
+          return Math.random() < 0.35
+            ? TECH_SYMBOLS[Math.floor(Math.random() * TECH_SYMBOLS.length)]
+            : char;
+        }).join('');
+        setDisplayText(glitched);
+        if (step >= 10) {
+          clearInterval(frameTimer);
+          frameTimer = undefined;
+          setDisplayText(text);
+          setIsGlitching(false);
+          running = false;
+        }
+      }, speed);
+    };
     const initTimer = setTimeout(runGlitch, 400);
-
-    // Glitch periódico
     const periodicTimer = setInterval(runGlitch, glitchInterval);
-
     return () => {
       clearTimeout(initTimer);
       clearInterval(periodicTimer);
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (frameTimer) clearInterval(frameTimer);
     };
-  }, [text, glitchInterval]);
+  }, [text, speed, glitchInterval, reducedMotion]);
 
   return (
     <Text
+      accessibilityLabel={text}
       style={[
         styles.text,
         { color },

@@ -12,6 +12,7 @@ import {
   ViewStyle
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useReducedMotion } from './useReducedMotion';
 
 interface ShimmerButtonProps {
   title: string;
@@ -36,10 +37,11 @@ export const ShimmerButton: React.FC<ShimmerButtonProps> = ({
   gradientColors = ['#F59E0B', '#D97706'],
   borderRadius = 12
 }) => {
+  const reducedMotion = useReducedMotion();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
-    if (disabled) return;
+    if (disabled || reducedMotion) return;
     Animated.spring(scaleAnim, {
       toValue: 0.97,
       useNativeDriver: true,
@@ -49,6 +51,7 @@ export const ShimmerButton: React.FC<ShimmerButtonProps> = ({
   };
 
   const handlePressOut = () => {
+    if (reducedMotion) return;
     Animated.spring(scaleAnim, {
       toValue: 1,
       useNativeDriver: true,
@@ -61,13 +64,16 @@ export const ShimmerButton: React.FC<ShimmerButtonProps> = ({
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
       <Pressable
         onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        accessibilityState={{ disabled }}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         disabled={disabled}
-        style={[styles.pressable, { borderRadius }]}
+        style={[styles.pressable, { borderRadius, opacity: disabled ? 0.85 : 1 }, Platform.OS === 'web' && { cursor: disabled ? 'not-allowed' : 'pointer' } as any]}
       >
         {/* Shimmer Border en Web */}
-        {Platform.OS === 'web' && (
+        {Platform.OS === 'web' && !disabled && !reducedMotion && (
           <div
             style={{
               position: 'absolute',
@@ -107,12 +113,6 @@ const styles = StyleSheet.create({
   pressable: {
     overflow: 'hidden',
     position: 'relative',
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-        boxShadow: '0 4px 18px rgba(245, 158, 11, 0.35)'
-      }
-    })
   },
   gradient: {
     paddingVertical: 12,

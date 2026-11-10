@@ -1,7 +1,8 @@
 // GlowCursor: Cursor ambiental con halo de luz reactivo y estela suave (React Bits)
 // https://reactbits.dev/animations/glow-cursor
-import React, { useEffect, useState } from 'react';
-import { Platform, View, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
+import { useReducedMotion } from './useReducedMotion';
 
 interface GlowCursorProps {
   color?: string;
@@ -14,10 +15,17 @@ export const GlowCursor: React.FC<GlowCursorProps> = ({
   size = 320,
   glowOpacity = 0.85
 }) => {
-  const [pos, setPos] = useState({ x: -500, y: -500, isVisible: false });
+  const [isVisible, setIsVisible] = useState(false);
+  const visibleRef = useRef(false);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
+    if (reducedMotion) {
+      visibleRef.current = false;
+      setIsVisible(false);
+      return;
+    }
 
     // Solo activar si no es un dispositivo exclusivamente táctil
     const isTouchOnly = window.matchMedia('(pointer: coarse)').matches;
@@ -27,50 +35,48 @@ export const GlowCursor: React.FC<GlowCursorProps> = ({
     let targetY = -500;
     let currentX = -500;
     let currentY = -500;
-    let animationFrame: number;
+    let animationFrame = 0;
+    const cursorEl = document.getElementById('rb-glow-cursor');
+    const dotEl = document.getElementById('rb-glow-dot');
+
+    const loop = () => {
+      currentX += (targetX - currentX) * 0.15;
+      currentY += (targetY - currentY) * 0.15;
+      if (cursorEl) cursorEl.style.transform = `translate3d(${currentX - size / 2}px, ${currentY - size / 2}px, 0)`;
+      if (Math.abs(targetX - currentX) > 0.5 || Math.abs(targetY - currentY) > 0.5) {
+        animationFrame = requestAnimationFrame(loop);
+      } else {
+        animationFrame = 0;
+      }
+    };
 
     const handleMouseMove = (e: MouseEvent) => {
       targetX = e.clientX;
       targetY = e.clientY;
-      if (!pos.isVisible) {
-        setPos((prev) => ({ ...prev, isVisible: true }));
+      if (dotEl) dotEl.style.transform = `translate3d(${targetX - 4}px, ${targetY - 4}px, 0)`;
+      if (!visibleRef.current) {
+        visibleRef.current = true;
+        setIsVisible(true);
       }
+      if (!animationFrame) animationFrame = requestAnimationFrame(loop);
     };
 
     const handleMouseLeave = () => {
-      setPos((prev) => ({ ...prev, isVisible: false }));
-    };
-
-    // Interpolación suave (lerp) para movimiento orgánico
-    const loop = () => {
-      currentX += (targetX - currentX) * 0.15;
-      currentY += (targetY - currentY) * 0.15;
-
-      const cursorEl = document.getElementById('rb-glow-cursor');
-      if (cursorEl) {
-        cursorEl.style.transform = `translate3d(${currentX - size / 2}px, ${currentY - size / 2}px, 0)`;
-      }
-
-      const dotEl = document.getElementById('rb-glow-dot');
-      if (dotEl) {
-        dotEl.style.transform = `translate3d(${targetX - 4}px, ${targetY - 4}px, 0)`;
-      }
-
-      animationFrame = requestAnimationFrame(loop);
+      visibleRef.current = false;
+      setIsVisible(false);
     };
 
     window.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseleave', handleMouseLeave);
-    animationFrame = requestAnimationFrame(loop);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseleave', handleMouseLeave);
       cancelAnimationFrame(animationFrame);
     };
-  }, [size]);
+  }, [size, reducedMotion]);
 
-  if (Platform.OS !== 'web') return null;
+  if (Platform.OS !== 'web' || reducedMotion) return null;
 
   return (
     <>
@@ -87,7 +93,7 @@ export const GlowCursor: React.FC<GlowCursorProps> = ({
           pointerEvents: 'none',
           background: `radial-gradient(circle, ${color} 0%, rgba(245, 158, 11, 0.05) 45%, transparent 70%)`,
           zIndex: 99998,
-          opacity: pos.isVisible ? glowOpacity : 0,
+          opacity: isVisible ? glowOpacity : 0,
           transition: 'opacity 0.4s ease',
           willChange: 'transform'
         }}
@@ -106,7 +112,7 @@ export const GlowCursor: React.FC<GlowCursorProps> = ({
           boxShadow: '0 0 10px #F59E0B, 0 0 20px #F59E0B',
           pointerEvents: 'none',
           zIndex: 99999,
-          opacity: pos.isVisible ? 0.6 : 0,
+          opacity: isVisible ? 0.6 : 0,
           transition: 'opacity 0.3s ease',
           willChange: 'transform'
         }}

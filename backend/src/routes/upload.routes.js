@@ -38,9 +38,27 @@ router.post('/upload', requireAuth, async (req, res, next) => {
       });
     }
 
-    // Limpiar prefijo data URL si existe
+        // Limpiar prefijo data URL si existe
     const cleanBase64 = base64.replace(/^data:[^;]+;base64,/, '');
     const buffer = Buffer.from(cleanBase64, 'base64');
+
+    // MEDIO (Auditoría de Seguridad): Validación de Magic Bytes en archivo real
+    const isJpeg = buffer.length > 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF;
+    const isPng = buffer.length > 4 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+    const isRiff = buffer.length > 4 && buffer.toString('utf8', 0, 4) === 'RIFF'; // WAV o WEBP
+    const isMp3 = (buffer.length > 3 && buffer.toString('utf8', 0, 3) === 'ID3') || (buffer.length > 2 && buffer[0] === 0xFF && (buffer[1] & 0xE0) === 0xE0);
+    const isOgg = buffer.length > 4 && buffer.toString('utf8', 0, 4) === 'OggS';
+    const isFlac = buffer.length > 4 && buffer.toString('utf8', 0, 4) === 'fLaC';
+    const isM4a = buffer.length > 8 && (buffer.toString('utf8', 4, 8) === 'ftyp' || buffer.toString('utf8', 4, 8) === 'M4A ');
+
+    if (!isJpeg && !isPng && !isRiff && !isMp3 && !isOgg && !isFlac && !isM4a) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_FILE_SIGNATURE',
+          message: 'El contenido del archivo no coincide con su extensión o no es un formato válido de audio/imagen.'
+        }
+      });
+    }
 
     // Asegurar existencia del directorio de subidas
     if (!fs.existsSync(uploadsDir)) {

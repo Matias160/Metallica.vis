@@ -68,53 +68,7 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
 
   // Redirección oficial OAuth 2.0 a la web del proveedor en ventana emergente / navegador nativo
   async function handleSocial(provider, role = chosenRole) {
-    try {
-      setLoading(true);
-      setErrorMsg('');
-
-      const oauthEndpoints = {
-        google: 'https://accounts.google.com/o/oauth2/v2/auth?client_id=437755324140-6b352u957m6qlgujhr1jhb2gfk5sneac.apps.googleusercontent.com&response_type=token&scope=openid%20profile%20email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
-        spotify: 'https://accounts.spotify.com/authorize?client_id=6ff899cf0e2c4954aa23517da1941e3f&response_type=code&scope=user-read-email%20user-read-private&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis',
-        github: 'https://github.com/login/oauth/authorize?client_id=Ov23liYTETP2qRo6BQV5&scope=read:user%20user:email&redirect_uri=https://auth.expo.io/@matirivas/metallica-vis'
-      };
-
-      const targetUrl = oauthEndpoints[provider] || oauthEndpoints.google;
-      const redirectUrl = 'https://auth.expo.io/@matirivas/metallica-vis';
-
-      // 1. En entorno web podemos abrir la ventana emergente oficial si se desea;
-      // en móvil (Expo Go / APK) evitamos que el navegador quede colgado en una pestaña blanca
-      // debido a las restricciones de redirección de proxy (auth.expo.io).
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        const width = 500;
-        const height = 650;
-        const left = (window.innerWidth - width) / 2;
-        const top = (window.innerHeight - height) / 2;
-        try {
-          window.open(targetUrl, `oauth_${provider}`, `width=${width},height=${height},top=${top},left=${left}`);
-        } catch {}
-      }
-
-      // Pequeña pausa estética de 400ms para mostrar la validación del protocolo OAuth 2.0
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
-      // 2. Conectar identidad OAuth con el backend
-      // Si el usuario ingresó un email en el formulario, se vincula a ese email.
-      // Si el campo está vacío, comparte la misma cuenta social única ("social@metallica.vis")
-      // garantizando que Google, Spotify y GitHub compartan la misma sesión y colección sin crear cuentas dispares.
-      const activeEmail = email.trim() ? email.trim().toLowerCase() : 'social@metallica.vis';
-      const cleanIdent = activeEmail.replace(/[^a-zA-Z0-9]/g, '_');
-      const providerId = `${provider}_${cleanIdent}`;
-      const defaultName = activeEmail === 'social@metallica.vis' ? 'Coleccionista Social' : (activeEmail.split('@')[0] || 'Usuario Social');
-
-      await socialLogin(provider, providerId, activeEmail, defaultName, role);
-      notify('OAuth 2.0 Verificado', `Sesión iniciada con ${provider.toUpperCase()} con perfil de ${role.toUpperCase()}`, 'success');
-    } catch (error) {
-      console.warn('Error OAuth:', error);
-      setErrorMsg(error.message || `Error con ${provider}`);
-      notify(`Error OAuth`, error.message, 'error');
-    } finally {
-      setLoading(false);
-    }
+    notify('Acceso Social Pausado', 'El acceso social está desactivado temporalmente por política de seguridad hasta validar tokens criptográficos OIDC en el servidor.', 'warning');
   }
 
   function setDemoUser(demoEmail, demoPass = 'Password123!') {
@@ -381,54 +335,68 @@ export default function LoginScreen({ navigation }: { navigation: any }): React.
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Botones Redes Sociales (Requerimiento Académico 3 Proveedores) */}
-              <View style={styles.socialButtons}>
+              {/* Banner de Auditoría de Seguridad OIDC */}
+              <View style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                borderColor: 'rgba(239, 68, 68, 0.35)',
+                borderWidth: 1,
+                borderRadius: 10,
+                padding: 10,
+                marginBottom: 12,
+                alignItems: 'center'
+              }}>
+                <Text style={{ color: '#fca5a5', fontSize: 11, fontWeight: '800', textAlign: 'center', letterSpacing: 0.5 }}>
+                  🛡️ ACCESO SOCIAL PAUSADO POR SEGURIDAD
+                </Text>
+                <Text style={{ color: '#cbd5e1', fontSize: 10.5, textAlign: 'center', marginTop: 3 }}>
+                  Botones desactivados hasta implementar validación criptográfica de tokens OpenID Connect (OIDC) en el servidor. Utilizá los perfiles demo de arriba.
+                </Text>
+              </View>
+
+              {/* Botones Redes Sociales Deshabilitados */}
+              <View style={[styles.socialButtons, { opacity: 0.5 }]}>
                 <Pressable
-                  style={({ pressed }) => [
+                  style={[
                     styles.socialBtn,
-                    { borderColor: colors.google, backgroundColor: colors.googleBg },
-                    pressed && { opacity: 0.8 }
+                    { borderColor: colors.google, backgroundColor: colors.googleBg, cursor: 'not-allowed' as any }
                   ]}
                   onPress={() => openRoleModal('google')}
-                  disabled={loading}
+                  disabled={true}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Feather name="globe" size={12} color="#fca5a5" />
-                    <Text style={[styles.socialText, { color: '#fca5a5' }]}>Google</Text>
+                    <Text style={[styles.socialText, { color: '#fca5a5' }]}>Google (Pausado)</Text>
                   </View>
                 </Pressable>
 
                 <Pressable
-                  style={({ pressed }) => [
+                  style={[
                     styles.socialBtn,
-                    { borderColor: colors.spotify, backgroundColor: colors.spotifyBg },
-                    pressed && { opacity: 0.8 }
+                    { borderColor: colors.spotify, backgroundColor: colors.spotifyBg, cursor: 'not-allowed' as any }
                   ]}
                   onPress={() => openRoleModal('spotify')}
-                  disabled={loading}
+                  disabled={true}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Feather name="radio" size={12} color={colors.spotify} />
-                    <Text style={[styles.socialText, { color: colors.spotify }]}>Spotify</Text>
+                    <Text style={[styles.socialText, { color: colors.spotify }]}>Spotify (Pausado)</Text>
                   </View>
                 </Pressable>
 
                 <Pressable
-                  style={({ pressed }) => [
+                  style={[
                     styles.socialBtn,
-                    { borderColor: '#475569', backgroundColor: colors.githubBg },
-                    pressed && { opacity: 0.8 }
+                    { borderColor: '#475569', backgroundColor: colors.githubBg, cursor: 'not-allowed' as any }
                   ]}
                   onPress={() => openRoleModal('github')}
-                  disabled={loading}
+                  disabled={true}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Feather name="terminal" size={12} color={colors.github} />
-                    <Text style={[styles.socialText, { color: colors.github }]}>GitHub</Text>
+                    <Text style={[styles.socialText, { color: colors.github }]}>GitHub (Pausado)</Text>
                   </View>
                 </Pressable>
               </View>
-
               {/* Ficha Técnica OAuth 2.0 para el docente / evaluación */}
               <Pressable
                 style={styles.oauthToggleBtn}

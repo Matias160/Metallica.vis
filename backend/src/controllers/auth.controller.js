@@ -115,76 +115,14 @@ export async function me(req, res, next) {
 }
 
 export async function socialLogin(req, res, next) {
-  try {
-    const { provider, providerId, email, displayName } = req.body;
-    if (!['google', 'spotify', 'github', 'facebook', 'apple'].includes(provider) || !providerId || !email) {
-      return res.status(400).json({ error: { code: 'INVALID_INPUT', message: 'Proveedor (google, spotify o github), ID social y email requeridos' } });
+  // CRÍTICO (Auditoría de Seguridad): Acceso social sin verificación real deshabilitado.
+  // El navegador enviaba email e ID arbitrarios sin validar tokens de identidad criptográficos con Google/Spotify/GitHub.
+  return res.status(503).json({
+    error: {
+      code: 'SOCIAL_AUTH_DISABLED',
+      message: 'El acceso social mediante Google/Spotify/GitHub está temporalmente deshabilitado por auditoría de seguridad hasta implementar la verificación criptográfica OIDC en el servidor.'
     }
-
-    const connection = await pool.getConnection();
-    try {
-      await connection.beginTransaction();
-
-      const [socialRows] = await connection.query(
-        'SELECT user_id FROM social_accounts WHERE provider = ? AND provider_account_id = ?',
-        [provider, providerId]
-      );
-
-      let userId;
-      if (socialRows.length > 0) {
-        userId = socialRows[0].user_id;
-      } else {
-        const [userRows] = await connection.query(
-          'SELECT id FROM users WHERE email = ?',
-          [email.toLowerCase()]
-        );
-
-        if (userRows.length > 0) {
-          userId = userRows[0].id;
-        } else {
-          const baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 30) || 'social_user';
-          const [exists] = await connection.query('SELECT id FROM users WHERE username = ?', [baseUsername]);
-          const uniqueUsername = exists.length > 0 ? `${baseUsername}_${Date.now().toString().slice(-4)}` : baseUsername;
-          const [newUser] = await connection.query(
-            'INSERT INTO users (username, email, display_name) VALUES (?, ?, ?)',
-            [uniqueUsername, email.toLowerCase(), displayName || baseUsername]
-          );
-          userId = newUser.insertId;
-
-          const targetRole = ['collector', 'artist', 'admin'].includes(req.body.role) ? req.body.role : 'collector';
-          const [roles] = await connection.query('SELECT id FROM roles WHERE name = ?', [targetRole]);
-          if (roles[0]) {
-            await connection.query('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [userId, roles[0].id]);
-          }
-          if (targetRole === 'artist') {
-            await connection.query(
-              'INSERT INTO artists (owner_user_id, name, biography, verified) VALUES (?, ?, ?, TRUE)',
-              [userId, displayName || baseUsername, 'Artista registrado mediante autenticación federada.', true]
-            );
-          }
-        }
-
-        await connection.query(
-          'INSERT INTO social_accounts (user_id, provider, provider_account_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)',
-          [userId, provider, providerId]
-        );
-      }
-
-      await connection.commit();
-
-      const user = await getUserWithRoles(userId);
-      const refresh = createRefreshToken(user);
-      await pool.query('INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))', [user.id, refresh.hash]);
-      return res.json({ user, accessToken: createAccessToken(user), refreshToken: refresh.token, provider });
-    } catch (err) {
-      await connection.rollback();
-      throw err;
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
+  });
 }
 
 export async function updateProfile(req, res, next) {

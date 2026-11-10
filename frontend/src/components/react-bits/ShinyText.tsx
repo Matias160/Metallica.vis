@@ -1,6 +1,7 @@
 // ShinyText: Texto con destello metálico continuo (efecto React Bits)
 import React, { useEffect, useRef } from 'react';
 import { Animated, Platform, StyleSheet, Text, TextStyle, View } from 'react-native';
+import { useReducedMotion } from './useReducedMotion';
 
 interface ShinyTextProps {
   text: string;
@@ -19,27 +20,28 @@ export const ShinyText: React.FC<ShinyTextProps> = ({
   style,
   disabled = false
 }) => {
+  const reducedMotion = useReducedMotion();
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (disabled) return;
+    if (disabled || reducedMotion || Platform.OS === 'web') return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(anim, {
           toValue: 1,
           duration: speed,
-          useNativeDriver: Platform.OS !== 'web'
+          useNativeDriver: true
         }),
         Animated.timing(anim, {
           toValue: 0,
           duration: speed,
-          useNativeDriver: Platform.OS !== 'web'
+          useNativeDriver: true
         })
       ])
     );
     loop.start();
     return () => loop.stop();
-  }, [disabled, speed]);
+  }, [anim, disabled, reducedMotion, speed]);
 
   const animatedColor = anim.interpolate({
     inputRange: [0, 0.5, 1],
@@ -55,11 +57,11 @@ export const ShinyText: React.FC<ShinyTextProps> = ({
           style,
           // CSS Shimmer en navegadores web para máximo rendimiento a 120fps
           {
-            backgroundImage: `linear-gradient(110deg, ${baseColor} 30%, ${shimmerColor} 50%, ${baseColor} 70%)`,
+            backgroundImage: disabled || reducedMotion ? 'none' : `linear-gradient(110deg, ${baseColor} 30%, ${shimmerColor} 50%, ${baseColor} 70%)`,
             backgroundSize: '200% 100%',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            animation: disabled ? 'none' : `shinyTextSweep ${speed}ms linear infinite`
+            WebkitBackgroundClip: disabled || reducedMotion ? 'border-box' : 'text',
+            WebkitTextFillColor: disabled || reducedMotion ? baseColor : 'transparent',
+            animation: disabled || reducedMotion ? 'none' : `shinyTextSweep ${speed}ms linear infinite`
           } as any
         ]}
       >
@@ -69,7 +71,7 @@ export const ShinyText: React.FC<ShinyTextProps> = ({
   }
 
   return (
-    <Animated.Text style={[styles.text, style, { color: animatedColor }]}>
+    <Animated.Text style={[styles.text, style, { color: disabled || reducedMotion ? baseColor : animatedColor }]}>
       {text}
     </Animated.Text>
   );

@@ -1,5 +1,5 @@
 // SpotlightCard: Tarjeta con foco de luz radial interactivo adaptada para tema Claro y Oscuro (React Bits)
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Platform, ViewStyle, StyleProp, Pressable } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -21,12 +21,7 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
   onPress
 }) => {
   const { palette, isDark } = useTheme();
-  const cardRef = useRef<View>(null);
-  const [position, setPosition] = useState<{ x: number; y: number; opacity: number }>({
-    x: 0,
-    y: 0,
-    opacity: 0
-  });
+  const [hovered, setHovered] = useState(false);
 
   const defaultSpotlight = isDark
     ? 'rgba(245, 158, 11, 0.18)'
@@ -42,21 +37,19 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
   const handlePointerMove = (e: any) => {
     if (Platform.OS !== 'web') return;
     const rect = e.currentTarget.getBoundingClientRect();
-    setPosition({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-      opacity: 1
-    });
+    e.currentTarget.style.setProperty('--spotlight-x', `${e.clientX - rect.left}px`);
+    e.currentTarget.style.setProperty('--spotlight-y', `${e.clientY - rect.top}px`);
   };
 
   const handlePointerLeave = () => {
     if (Platform.OS !== 'web') return;
-    setPosition((prev) => ({ ...prev, opacity: 0 }));
+    setHovered(false);
   };
 
   const webEvents =
     Platform.OS === 'web'
       ? {
+          onPointerEnter: () => setHovered(true),
           onPointerMove: handlePointerMove,
           onPointerLeave: handlePointerLeave
         }
@@ -64,7 +57,6 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
 
   const content = (
     <View
-      ref={cardRef}
       style={[
         styles.cardContainer,
         {
@@ -87,9 +79,9 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
             bottom: 0,
             borderRadius: `${borderRadius}px`,
             pointerEvents: 'none',
-            opacity: position.opacity,
+            opacity: hovered ? 1 : 0,
             transition: 'opacity 0.3s ease',
-            background: `radial-gradient(420px circle at ${position.x}px ${position.y}px, ${activeSpotlight}, transparent 80%)`,
+            background: `radial-gradient(420px circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%), ${activeSpotlight}, transparent 80%)`,
             zIndex: 1
           }}
         />
@@ -103,9 +95,9 @@ export const SpotlightCard: React.FC<SpotlightCardProps> = ({
             inset: '-1px',
             borderRadius: `${borderRadius + 1}px`,
             pointerEvents: 'none',
-            opacity: position.opacity,
+            opacity: hovered ? 1 : 0,
             transition: 'opacity 0.25s ease',
-            background: `radial-gradient(300px circle at ${position.x}px ${position.y}px, ${activeBorder}, transparent 70%)`,
+            background: `radial-gradient(300px circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%), ${activeBorder}, transparent 70%)`,
             zIndex: 0
           }}
         />

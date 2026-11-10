@@ -225,7 +225,7 @@ export default function MuseumScreen({ navigation }) {
                 { color: activeTab === 'pieces' ? palette.accent : palette.muted }
               ]}
             >
-              Másters Históricos (4)
+              Másters Históricos ({MUSEUM_PIECES.length})
             </Text>
           </Pressable>
 
@@ -255,10 +255,10 @@ export default function MuseumScreen({ navigation }) {
             <View style={{ marginBottom: 28, alignItems: 'center', width: '100%' }}>
               <View style={[styles.sectionHeaderRow, { marginBottom: 12, width: '100%' }]}>
                 <Text style={[styles.sectionTitle, { color: palette.text }]}>
-                  EXHIBICIÓN RADIAL 3D · RELIQUIAS HISTÓRICAS
+                  EXHIBICIÓN ANALÓGICA · RELIQUIAS HISTÓRICAS
                 </Text>
                 <Text style={[styles.sectionSubtitle, { color: palette.muted }]}>
-                  Girá el cilindro analógico para inspeccionar las cintas máster conservadas en bóveda.
+                  Explorá las cintas máster preservadas en bóveda. Seleccioná una pieza para ver su ficha.
                 </Text>
               </View>
               <CircularCarousel

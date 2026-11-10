@@ -2,7 +2,7 @@
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { FeedbackProvider } from './src/context/FeedbackContext';
@@ -23,12 +23,29 @@ if (Platform.OS === 'web') {
 
 function ThemedApp(): React.JSX.Element {
   const { isDark, palette } = useTheme();
+
+  const navTheme = React.useMemo(() => {
+    const base = isDark ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      dark: isDark,
+      colors: {
+        ...base.colors,
+        primary: palette.accent,
+        background: palette.background,
+        card: palette.surface,
+        text: palette.text,
+        border: palette.border
+      }
+    };
+  }, [isDark, palette]);
+
   return (
     <View style={[styles.outerContainer, { backgroundColor: palette.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <GlowCursor color={isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(217, 119, 6, 0.08)'} />
       <View style={[styles.innerContainer, { backgroundColor: palette.background }]}>
-        <NavigationContainer>
+        <NavigationContainer theme={navTheme}>
           <RootNavigator />
         </NavigationContainer>
       </View>

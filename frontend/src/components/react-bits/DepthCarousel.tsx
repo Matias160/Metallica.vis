@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { useReducedMotion } from './useReducedMotion';
 
 interface DepthItem {
   id: string | number;
@@ -37,6 +38,7 @@ export const DepthCarousel: React.FC<DepthCarouselProps> = ({
   palette
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const reducedMotion = useReducedMotion();
 
   if (!items || items.length === 0) return null;
 
@@ -54,6 +56,8 @@ export const DepthCarousel: React.FC<DepthCarouselProps> = ({
     setActiveIndex((prev) => (prev - 1 + items.length) % items.length);
   };
 
+  const cardWidth = 480;
+  const cardHeight = 190;
   const current = items[activeIndex];
 
   return (
@@ -77,6 +81,8 @@ export const DepthCarousel: React.FC<DepthCarouselProps> = ({
           return (
             <Pressable
               key={item.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}, ${isFront ? 'configurar tirada' : 'mostrar pista'}`}
               onPress={() => {
                 if (isFront && onSelect) {
                   onSelect(item);
@@ -89,16 +95,27 @@ export const DepthCarousel: React.FC<DepthCarouselProps> = ({
                 {
                   zIndex,
                   opacity,
+                  width: '92%',
+                  maxWidth: cardWidth,
+                  height: cardHeight,
                   transform: [
-                    { translateY },
+                    { perspective: 1000 },
+                    { translateX: -Math.min(cardWidth, 480) / 2 },
+                    { translateY: -cardHeight / 2 + translateY },
                     { scale }
                   ]
                 },
                 Platform.OS === 'web' && {
-                  transform: `translate3d(0, ${translateY}px, ${-diff * 60}px) scale(${scale})`,
-                  transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                  filter: diff > 0 ? `brightness(${0.85 - diff * 0.15})` : 'none',
-                  cursor: isFront ? 'default' : 'pointer'
+                  cursor: isFront ? 'default' : 'pointer',
+                  transition: reducedMotion ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease',
+                  filter: diff > 0 ? `brightness(${0.88 - diff * 0.12})` : 'none',
+                  boxShadow: isFront
+                    ? (palette.mode === 'light'
+                        ? '0 16px 36px rgba(15, 23, 42, 0.14), 0 0 20px rgba(217, 119, 6, 0.18)'
+                        : '0 20px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(245, 158, 11, 0.14)')
+                    : (palette.mode === 'light'
+                        ? '0 8px 20px rgba(15, 23, 42, 0.08)'
+                        : '0 10px 24px rgba(0, 0, 0, 0.4)')
                 } as any
               ]}
             >
@@ -164,6 +181,8 @@ export const DepthCarousel: React.FC<DepthCarouselProps> = ({
       <View style={styles.footerControls}>
         <Pressable
           onPress={handlePrev}
+          accessibilityRole="button"
+          accessibilityLabel="Pista anterior"
           style={[styles.ctrlBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
         >
           <Text style={[styles.ctrlBtnText, { color: palette.text }]}>ANTERIOR</Text>
@@ -175,6 +194,8 @@ export const DepthCarousel: React.FC<DepthCarouselProps> = ({
 
         <Pressable
           onPress={handleNext}
+          accessibilityRole="button"
+          accessibilityLabel="Pista siguiente"
           style={[styles.ctrlBtn, { backgroundColor: palette.surfaceLight, borderColor: palette.border }]}
         >
           <Text style={[styles.ctrlBtnText, { color: palette.text }]}>SIGUIENTE</Text>
@@ -206,6 +227,8 @@ const styles = StyleSheet.create({
   },
   depthCard: {
     position: 'absolute',
+    left: '50%',
+    top: '50%',
     width: '92%',
     maxWidth: 520,
     height: 190,

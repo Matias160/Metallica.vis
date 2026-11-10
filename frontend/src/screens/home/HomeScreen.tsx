@@ -727,7 +727,8 @@ export default function HomeScreen({ navigation }: { navigation: any }): React.J
                         onPress={() => handleClaim(trackPressing, item.title)}
                         disabled={isSoldOut || Boolean(isClaiming)}
                         style={isDesktop ? { width: 300 } : { width: '100%' }}
-                        gradientColors={isSoldOut ? ['#334155', '#1E293B'] : ['#F59E0B', '#D97706']}
+                        gradientColors={isSoldOut ? [palette.cardElevated, palette.card] : palette.amberGradient}
+                        textStyle={isSoldOut ? { color: palette.textMuted } : undefined}
                         icon={
                           isClaiming ? null : (
                             <Archive

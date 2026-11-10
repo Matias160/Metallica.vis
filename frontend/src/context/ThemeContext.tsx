@@ -1,5 +1,6 @@
 // Estado global del tema con persistencia y paletas de alta fidelidad unificadas.
 import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { darkPalette as baseDark, lightPalette as baseLight, ThemePalette as BaseThemePalette } from '../theme/theme';
 
@@ -164,6 +165,50 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const palette = useMemo(() => {
     return mode === 'dark' ? darkThemePalette : lightThemePalette;
   }, [mode]);
+
+  // Mantiene los estilos exclusivos de web alineados con los tokens nativos.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.dataset.theme = mode;
+    root.style.colorScheme = mode;
+    const cssTokens: Record<string, string> = {
+      '--bg-app': palette.background,
+      '--bg-elevated': palette.cardElevated,
+      '--bg-surface': palette.card,
+      '--bg-surface-light': palette.cardElevated,
+      '--bg-surface-hover': palette.cardHighlight,
+      '--bg-recessed': palette.backgroundSecondary,
+      '--bg-glass': palette.glass,
+      '--border-main': palette.border,
+      '--border-subtle': palette.borderSubtle,
+      '--border-active': palette.amber,
+      '--border-cyan': palette.cyan,
+      '--text-primary': palette.text,
+      '--text-secondary': palette.textSecondary,
+      '--text-muted': palette.textMuted,
+      '--text-muted-dark': palette.textDark,
+      '--accent-gold': palette.amber,
+      '--accent-gold-hover': palette.accentHover,
+      '--accent-gold-bright': palette.accentBright,
+      '--accent-gold-muted': palette.accentMuted,
+      '--accent-gold-border': palette.accentBorder,
+      '--accent-cyan': palette.cyan,
+      '--accent-cyan-hover': palette.cyanHover,
+      '--accent-cyan-muted': palette.cyanMuted,
+      '--accent-cyan-border': palette.cyanBorder,
+      '--status-mint': palette.emerald,
+      '--status-mint-muted': palette.successMuted,
+      '--status-worn': palette.amber,
+      '--status-worn-muted': palette.warningMuted,
+      '--status-critical': palette.rose,
+      '--status-critical-muted': palette.dangerMuted,
+      '--shadow-sm': mode === 'dark' ? '0 2px 6px rgba(0, 0, 0, 0.4)' : '0 2px 8px rgba(15, 23, 42, 0.08)',
+      '--shadow-md': mode === 'dark' ? '0 6px 18px rgba(0, 0, 0, 0.55)' : '0 8px 22px rgba(15, 23, 42, 0.12)',
+      '--shadow-lg': mode === 'dark' ? '0 12px 30px rgba(0, 0, 0, 0.7)' : '0 14px 32px rgba(15, 23, 42, 0.16)'
+    };
+    Object.entries(cssTokens).forEach(([name, value]) => root.style.setProperty(name, value));
+  }, [mode, palette]);
 
   const colors = useMemo<ThemeColors>(() => {
     return {

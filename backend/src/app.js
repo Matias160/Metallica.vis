@@ -16,12 +16,58 @@ const uploadsDir = path.join(__dirname, '../public/uploads');
 
 const app = express();
 
-app.use(cors());
-// Permitir subida de archivos de audio / imágenes con límite de 50MB
+// MEDIO (Auditoría de Seguridad): CORS restrictivo con whitelist en vez de comodín
+const allowedOrigins = new Set([
+  'http://localhost:8081',
+  'http://127.0.0.1:8081',
+  'http://localhost:19006',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL
+].filter(Boolean));
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Bloqueado por política CORS'));
+  },
+  credentials: true
+}));
+
+// Rate limiter en memoria para endpoints de autenticación (máx 30 intentos por minuto por IP)
+const authAttempts = new Map();
+function authRateLimiter(req, res, next) {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const maxAttempts = 30;
+
+  const userRecord = authAttempts.get(ip) || { count: 0, resetTime: now + windowMs };
+  if (now > userRecord.resetTime) {
+    userRecord.count = 1;
+    userRecord.resetTime = now + windowMs;
+  } else {
+    userRecord.count++;
+  }
+  authAttempts.set(ip, userRecord);
+
+  if (userRecord.count > maxAttempts) {
+    return res.status(429).json({
+      error: {
+        code: 'TOO_MANY_REQUESTS',
+        message: 'Demasiadas solicitudes de autenticación. Intentá de nuevo en un minuto.'
+      }
+    });
+  }
+  next();
+}
+
+// Permitir subida de archivos con límite de 50MB
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Servir archivos estáticos subidos (audio y carátulas)
+// Servir archivos estáticos subidos
 app.use('/uploads', express.static(uploadsDir));
 
 app.get('/api/health', (_req, res) => {
@@ -32,8 +78,7 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-app.use('/api/auth', authRoutes);
-// Rutas de subida y verificación pública de QR
+app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api', catalogRoutes);
 app.use('/api', copiesRoutes);
